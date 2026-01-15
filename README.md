@@ -1,6 +1,6 @@
 # ox-driver-simulator
 
-A simulator driver for testing and development that can emulate different VR devices (Quest, Vive, Vive trackers, etc.).
+A simulator driver for the [ox](https://github.com/cmdr2/ox) OpenXR runtime. This can help test and emulate different VR devices (Quest, Vive, Vive trackers, etc.) programmatically.
 
 ## Purpose
 
