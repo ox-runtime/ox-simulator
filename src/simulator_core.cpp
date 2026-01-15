@@ -139,9 +139,13 @@ OxComponentResult SimulatorCore::GetInputComponentState(uint32_t controller_inde
     const char* base = reinterpret_cast<const char*>(&input);
 
     if (mapping.type == ComponentMapping::FLOAT) {
-        out_state->float_value = *reinterpret_cast<const float*>(base + mapping.offset);
+        float val = *reinterpret_cast<const float*>(base + mapping.offset);
+        out_state->float_value = val;
+        out_state->boolean_value = (val > 0.5f) ? 1 : 0;
     } else if (mapping.type == ComponentMapping::BOOLEAN) {
-        out_state->boolean_value = *reinterpret_cast<const bool*>(base + mapping.offset) ? 1 : 0;
+        bool val = *reinterpret_cast<const bool*>(base + mapping.offset);
+        out_state->boolean_value = val ? 1 : 0;
+        out_state->float_value = val ? 1.0f : 0.0f;
     }
 
     return OX_COMPONENT_AVAILABLE;

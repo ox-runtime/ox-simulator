@@ -158,6 +158,7 @@ void HttpServer::ServerThread() {
             // Handle both numeric and boolean values
             if (json["value"].t() == crow::json::type::Number) {
                 value = json["value"].d();
+                boolean_value = (value >= 0.5f);
             } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
                 boolean_value = json["value"].b();
                 value = boolean_value ? 1.0f : 0.0f;
