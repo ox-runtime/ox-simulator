@@ -175,7 +175,7 @@ void HttpServer::ServerThread() {
     // Root endpoint for testing
     CROW_ROUTE(app, "/")
     ([]() {
-        return "OX Simulator API Server\n\nAvailable endpoints:\n"
+        return "ox Simulator API Server\n\nAvailable endpoints:\n"
                "  GET  /hmd/pose\n"
                "  POST /hmd/pose\n"
                "  POST /controller/<id>/pose\n"

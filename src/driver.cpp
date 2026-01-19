@@ -125,7 +125,7 @@ static std::string GetConfigPath() {
 // ===== Driver Callbacks =====
 
 static int simulator_initialize(void) {
-    std::cout << "=== OX Simulator Driver ===" << std::endl;
+    std::cout << "=== ox Simulator Driver ===" << std::endl;
 
     // Load configuration
     std::string config_path = GetConfigPath();

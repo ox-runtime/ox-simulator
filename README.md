@@ -57,7 +57,7 @@ Edit the `config.json` file in the deployed driver folder (`drivers/simulator_dr
 
 ### Starting the Simulator
 
-The simulator starts automatically when the OX service is launched.
+The simulator starts automatically when the ox service is launched.
 
 ### HTTP API Reference
 
@@ -207,7 +207,7 @@ print(f"Press A button: {response.status_code}")
 
 After deploying and configuring the simulator, you can test it with OpenXR applications:
 
-1. Start the OX service (which loads the simulator driver)
+1. Start the ox service (which loads the simulator driver)
 2. Set the OpenXR runtime environment variable:
    - **Windows:** `$env:XR_RUNTIME_JSON = "C:\path\to\ox\build\win-x64\bin\ox_openxr.json"`
    - **Linux:** `export XR_RUNTIME_JSON="/path/to/ox/build/linux-x64/bin/ox_openxr.json"`

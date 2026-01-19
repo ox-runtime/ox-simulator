@@ -55,7 +55,7 @@ add_custom_command(TARGET simulator_driver POST_BUILD
 add_custom_command(TARGET simulator_driver POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "====================================================================="
-    COMMAND ${CMAKE_COMMAND} -E echo "OX Simulator Driver build complete!"
+    COMMAND ${CMAKE_COMMAND} -E echo "ox Simulator Driver build complete!"
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "Output: ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}"
     COMMAND ${CMAKE_COMMAND} -E echo ""
