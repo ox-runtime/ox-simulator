@@ -110,7 +110,7 @@ void HttpServer::ServerThread() {
         // Validate user_path field
         if (!json.has("user_path")) {
             return crow::response(
-                400, "Missing required field: user_path (e.g., /user/hand/left, /user/vive_tracker/waist)");
+                400, "Missing required field: user_path (e.g., /user/head, /user/hand/left, /user/vive_tracker/waist)");
         }
 
         std::string user_path = json["user_path"].s();
@@ -137,52 +137,88 @@ void HttpServer::ServerThread() {
         return crow::response(200, "OK");
     });
 
-    // POST /device/input - Set device input state (user_path based)
-    CROW_ROUTE(app, "/device/input").methods("POST"_method)([this](const crow::request& req) {
-        auto json = crow::json::load(req.body);
-        if (!json) {
-            return crow::response(400, "Invalid JSON");
+    // GET /device/pose - Get device pose (user_path based)
+    CROW_ROUTE(app, "/device/pose").methods("GET"_method)([this](const crow::request& req) {
+        auto user_path_param = req.url_params.get("user_path");
+        if (!user_path_param) {
+            return crow::response(400, "Missing required query parameter: user_path");
         }
 
-        // Validate required fields
-        if (!json.has("user_path") || !json.has("component") || !json.has("value")) {
-            return crow::response(400, "Missing required fields: user_path, component, value");
+        std::string user_path = user_path_param;
+
+        OxDeviceState devices[OX_MAX_DEVICES];
+        uint32_t device_count;
+        simulator_->GetAllDevices(devices, &device_count);
+
+        for (uint32_t i = 0; i < device_count; ++i) {
+            if (std::strcmp(devices[i].user_path, user_path.c_str()) == 0) {
+                crow::json::wvalue response;
+                response["user_path"] = devices[i].user_path;
+                response["is_active"] = devices[i].is_active;
+                response["position"]["x"] = devices[i].pose.position.x;
+                response["position"]["y"] = devices[i].pose.position.y;
+                response["position"]["z"] = devices[i].pose.position.z;
+                response["orientation"]["x"] = devices[i].pose.orientation.x;
+                response["orientation"]["y"] = devices[i].pose.orientation.y;
+                response["orientation"]["z"] = devices[i].pose.orientation.z;
+                response["orientation"]["w"] = devices[i].pose.orientation.w;
+                return crow::response(response);
+            }
         }
 
-        std::string user_path = json["user_path"].s();
-        std::string component = json["component"].s();
-        float value = 0.0f;
-        bool boolean_value = false;
+        return crow::response(404, "Device not found");
+    });
+
+    // GET /device/input - Get device input state (user_path and component based)
+    CROW_ROUTE(app, "/device/input").methods("GET"_method)([this](const crow::request& req) {
+        auto user_path_param = req.url_params.get("user_path");
+        auto component_param = req.url_params.get("component");
+
+        if (!user_path_param || !component_param) {
+            return crow::response(400, "Missing required query parameters: user_path, component");
+        }
+
+        std::string user_path = user_path_param;
+        std::string component = component_param;
 
         // Validate component path format
         if (component.find("/input/") != 0) {
             return crow::response(400, "Component path must start with /input/ (e.g., /input/trigger/value)");
         }
 
-        // Handle both numeric and boolean values
-        if (json["value"].t() == crow::json::type::Number) {
-            value = json["value"].d();
-            boolean_value = (value >= 0.5f);
-        } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
-            boolean_value = json["value"].b();
-            value = boolean_value ? 1.0f : 0.0f;
-        }
-
         // Build full OpenXR component path: /user/hand/left/input/trigger/value
         std::string component_path = user_path + component;
 
-        simulator_->SetInputComponent(user_path.c_str(), component_path.c_str(), value, boolean_value);
-        return crow::response(200, "OK");
+        OxInputComponentState state;
+        OxComponentResult result =
+            simulator_->GetInputComponentState(user_path.c_str(), component_path.c_str(), &state);
+
+        if (result != OX_COMPONENT_AVAILABLE) {
+            return crow::response(404, "Component not available");
+        }
+
+        crow::json::wvalue response;
+        response["user_path"] = user_path;
+        response["component"] = component;
+        response["boolean_value"] = state.boolean_value;
+        response["float_value"] = state.float_value;
+        response["x"] = state.x;
+        response["y"] = state.y;
+
+        return crow::response(response);
     });
 
     // Root endpoint for testing
     CROW_ROUTE(app, "/")
     ([]() {
         return "ox Simulator API Server\n\nAvailable endpoints:\n"
-               "  GET  /hmd/pose\n"
-               "  POST /hmd/pose\n"
-               "  POST /device/pose\n"
-               "  POST /device/input\n";
+               "  GET  /hmd/pose              - Get HMD pose\n"
+               "  POST /hmd/pose              - Set HMD pose\n"
+               "  GET  /device/pose?user_path=... - Get device pose\n"
+               "  POST /device/pose           - Set device pose (supports /user/head, /user/hand/left, "
+               "/user/hand/right, etc.)\n"
+               "  GET  /device/input?user_path=...&component=... - Get device input state\n"
+               "  POST /device/input          - Set device input state\n";
     });
 
     std::cout << "Starting HTTP server on port " << port_ << "..." << std::endl;

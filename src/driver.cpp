@@ -287,7 +287,6 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     callbacks->get_device_info = simulator_get_device_info;
     callbacks->get_display_properties = simulator_get_display_properties;
     callbacks->get_tracking_capabilities = simulator_get_tracking_capabilities;
-    callbacks->update_pose = simulator_update_pose;
     callbacks->update_view_pose = simulator_update_view_pose;
     callbacks->update_devices = simulator_update_devices;
     callbacks->get_input_component_state = simulator_get_input_component_state;

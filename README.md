@@ -87,6 +87,24 @@ Content-Type: application/json
 }
 ```
 
+#### Get Device Pose
+```bash
+GET http://localhost:8765/device/pose?user_path=/user/hand/left
+```
+
+**Query Parameters:**
+- `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`, `/user/vive_tracker/waist`)
+
+**Response:**
+```json
+{
+  "user_path": "/user/hand/left",
+  "is_active": true,
+  "position": {"x": -0.2, "y": 1.4, "z": -0.3},
+  "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
+}
+```
+
 #### Set Device Pose
 ```bash
 POST http://localhost:8765/device/pose
@@ -103,6 +121,27 @@ Content-Type: application/json
 **Parameters:**
 - `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`, `/user/vive_tracker/waist`, `/user/vive_tracker/left_foot`)
 - `active`: Whether the device is active/connected (optional, default: true)
+
+#### Get Device Input
+```bash
+GET http://localhost:8765/device/input?user_path=/user/hand/left&component=/input/trigger/value
+```
+
+**Query Parameters:**
+- `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`)
+- `component`: Input component path with `/input/` prefix (e.g., `/input/trigger/value`, `/input/squeeze/value`, `/input/thumbstick/x`)
+
+**Response:**
+```json
+{
+  "user_path": "/user/hand/left",
+  "component": "/input/trigger/value",
+  "boolean_value": false,
+  "float_value": 0.8,
+  "x": 0.0,
+  "y": 0.0
+}
+```
 
 #### Set Device Input
 ```bash
@@ -138,12 +177,22 @@ Content-Type: application/json
 
 ### Using cURL
 
+**Get current HMD pose:**
+```bash
+curl http://localhost:8765/hmd/pose
+```
+
 **Move HMD forward:**
 ```bash
 curl -X POST http://localhost:8765/hmd/pose -H "Content-Type: application/json" -d '{
   "position": {"x": 0, "y": 1.6, "z": -1},
   "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
 }'
+```
+
+**Get left controller pose:**
+```bash
+curl "http://localhost:8765/device/pose?user_path=/user/hand/left"
 ```
 
 **Position left controller:**
@@ -154,6 +203,11 @@ curl -X POST http://localhost:8765/device/pose -H "Content-Type: application/jso
   "position": {"x": -0.2, "y": 1.4, "z": -0.3},
   "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
 }'
+```
+
+**Get trigger value:**
+```bash
+curl "http://localhost:8765/device/input?user_path=/user/hand/left&component=/input/trigger/value"
 ```
 
 **Press the left trigger:**
@@ -183,6 +237,12 @@ import json
 
 BASE_URL = "http://localhost:8765"
 
+# Get current HMD pose
+response = requests.get(f"{BASE_URL}/hmd/pose")
+if response.status_code == 200:
+    hmd_pose = response.json()
+    print(f"Current HMD pose: {hmd_pose}")
+
 # Move HMD
 hmd_pose = {
     "position": {"x": 0, "y": 1.6, "z": -1},
@@ -190,6 +250,12 @@ hmd_pose = {
 }
 response = requests.post(f"{BASE_URL}/hmd/pose", json=hmd_pose)
 print(f"Set HMD pose: {response.status_code}")
+
+# Get current left controller pose
+response = requests.get(f"{BASE_URL}/device/pose?user_path=/user/hand/left")
+if response.status_code == 200:
+    left_pose = response.json()
+    print(f"Left controller pose: {left_pose}")
 
 # Activate and position left controller
 left_controller = {
@@ -200,6 +266,12 @@ left_controller = {
 }
 response = requests.post(f"{BASE_URL}/device/pose", json=left_controller)
 print(f"Set left controller: {response.status_code}")
+
+# Get current trigger value
+response = requests.get(f"{BASE_URL}/device/input?user_path=/user/hand/left&component=/input/trigger/value")
+if response.status_code == 200:
+    trigger_state = response.json()
+    print(f"Trigger value: {trigger_state['float_value']}")
 
 # Press trigger on left controller
 trigger_input = {

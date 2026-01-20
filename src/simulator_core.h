@@ -12,10 +12,7 @@ namespace ox_sim {
 
 // Shared device state (written by API/GUI, read by driver)
 struct DeviceState {
-    // HMD pose
-    OxPose hmd_pose;
-
-    // Tracked devices (controllers, etc.)
+    // Tracked devices: device[0] = HMD (/user/head), device[1+] = controllers, trackers, etc.
     OxDeviceState devices[OX_MAX_DEVICES];
     uint32_t device_count;
 
@@ -47,9 +44,6 @@ struct DeviceState {
     };
 
     InputState device_inputs[OX_MAX_DEVICES];
-
-    // Connection status
-    std::atomic<bool> hmd_connected;
 };
 
 class SimulatorCore {
@@ -74,10 +68,6 @@ class SimulatorCore {
     void SetHMDPose(const OxPose& pose);
     void SetDevicePose(const char* user_path, const OxPose& pose, bool is_active);
     void SetInputComponent(const char* user_path, const char* component_path, float value, bool boolean_value = false);
-
-    // Connection status
-    bool IsHMDConnected() const { return state_.hmd_connected.load(); }
-    void SetHMDConnected(bool connected) { state_.hmd_connected.store(connected); }
 
     // Get device state pointer for direct access (for API server)
     DeviceState* GetDeviceState() { return &state_; }
