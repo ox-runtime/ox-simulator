@@ -167,8 +167,7 @@ void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, boo
     }
 }
 
-void SimulatorCore::SetInputComponent(const char* user_path, const char* component_path, float value,
-                                      bool boolean_value) {
+void SimulatorCore::SetInputComponent(const char* user_path, const char* component_path, float value) {
     std::lock_guard<std::mutex> lock(state_mutex_);
 
     // Find the device by user path
@@ -198,7 +197,7 @@ void SimulatorCore::SetInputComponent(const char* user_path, const char* compone
     if (mapping.type == ComponentMapping::FLOAT) {
         *reinterpret_cast<float*>(base + mapping.offset) = value;
     } else if (mapping.type == ComponentMapping::BOOLEAN) {
-        *reinterpret_cast<bool*>(base + mapping.offset) = boolean_value;
+        *reinterpret_cast<bool*>(base + mapping.offset) = (value >= 0.5f);
     }
 }
 

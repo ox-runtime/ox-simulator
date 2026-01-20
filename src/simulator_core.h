@@ -67,7 +67,7 @@ class SimulatorCore {
     // Update device state (called by API/GUI)
     void SetHMDPose(const OxPose& pose);
     void SetDevicePose(const char* user_path, const OxPose& pose, bool is_active);
-    void SetInputComponent(const char* user_path, const char* component_path, float value, bool boolean_value = false);
+    void SetInputComponent(const char* user_path, const char* component_path, float value);
 
     // Get device state pointer for direct access (for API server)
     DeviceState* GetDeviceState() { return &state_; }

@@ -220,23 +220,20 @@ void HttpServer::ServerThread() {
         std::string user_path = json["user_path"].s();
         std::string component_path = json["component_path"].s();
         float value = 0.0f;
-        bool boolean_value = false;
 
         // Validate component path format
         if (component_path.find("/input/") != 0) {
             return crow::response(400, "Component path must start with /input/ (e.g., /input/trigger/value)");
         }
 
-        // Handle both numeric and boolean values
+        // Handle both numeric and boolean values, convert to float
         if (json["value"].t() == crow::json::type::Number) {
             value = json["value"].d();
-            boolean_value = (value >= 0.5f);
         } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
-            boolean_value = json["value"].b();
-            value = boolean_value ? 1.0f : 0.0f;
+            value = json["value"].b() ? 1.0f : 0.0f;
         }
 
-        simulator_->SetInputComponent(user_path.c_str(), component_path.c_str(), value, boolean_value);
+        simulator_->SetInputComponent(user_path.c_str(), component_path.c_str(), value);
         return crow::response(200, "OK");
     });
 
