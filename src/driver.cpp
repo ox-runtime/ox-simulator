@@ -153,7 +153,10 @@ static int simulator_initialize(void) {
         std::cout << "HTTP API server started successfully" << std::endl;
         std::cout << "Use API endpoints to control the simulator:" << std::endl;
         std::cout << "  GET/POST http://localhost:" << g_config.api_port << "/hmd/pose" << std::endl;
+        std::cout << "  GET      http://localhost:" << g_config.api_port << "/device/pose?user_path=..." << std::endl;
         std::cout << "  POST     http://localhost:" << g_config.api_port << "/device/pose" << std::endl;
+        std::cout << "  GET      http://localhost:" << g_config.api_port
+                  << "/device/input?user_path=...&component_path=..." << std::endl;
         std::cout << "  POST     http://localhost:" << g_config.api_port << "/device/input" << std::endl;
     } else if (g_config.mode == "gui") {
         std::cout << "Starting GUI interface..." << std::endl;

@@ -169,25 +169,22 @@ void HttpServer::ServerThread() {
         return crow::response(404, "Device not found");
     });
 
-    // GET /device/input - Get device input state (user_path and component based)
+    // GET /device/input - Get device input state (user_path and component_path based)
     CROW_ROUTE(app, "/device/input").methods("GET"_method)([this](const crow::request& req) {
         auto user_path_param = req.url_params.get("user_path");
-        auto component_param = req.url_params.get("component");
+        auto component_path_param = req.url_params.get("component_path");
 
-        if (!user_path_param || !component_param) {
-            return crow::response(400, "Missing required query parameters: user_path, component");
+        if (!user_path_param || !component_path_param) {
+            return crow::response(400, "Missing required query parameters: user_path, component_path");
         }
 
         std::string user_path = user_path_param;
-        std::string component = component_param;
+        std::string component_path = component_path_param;
 
         // Validate component path format
-        if (component.find("/input/") != 0) {
+        if (component_path.find("/input/") != 0) {
             return crow::response(400, "Component path must start with /input/ (e.g., /input/trigger/value)");
         }
-
-        // Build full OpenXR component path: /user/hand/left/input/trigger/value
-        std::string component_path = user_path + component;
 
         OxInputComponentState state;
         OxComponentResult result =
@@ -199,13 +196,48 @@ void HttpServer::ServerThread() {
 
         crow::json::wvalue response;
         response["user_path"] = user_path;
-        response["component"] = component;
+        response["component_path"] = component_path;
         response["boolean_value"] = state.boolean_value;
         response["float_value"] = state.float_value;
         response["x"] = state.x;
         response["y"] = state.y;
 
         return crow::response(response);
+    });
+
+    // POST /device/input - Set device input state (user_path based)
+    CROW_ROUTE(app, "/device/input").methods("POST"_method)([this](const crow::request& req) {
+        auto json = crow::json::load(req.body);
+        if (!json) {
+            return crow::response(400, "Invalid JSON");
+        }
+
+        // Validate required fields
+        if (!json.has("user_path") || !json.has("component_path") || !json.has("value")) {
+            return crow::response(400, "Missing required fields: user_path, component_path, value");
+        }
+
+        std::string user_path = json["user_path"].s();
+        std::string component_path = json["component_path"].s();
+        float value = 0.0f;
+        bool boolean_value = false;
+
+        // Validate component path format
+        if (component_path.find("/input/") != 0) {
+            return crow::response(400, "Component path must start with /input/ (e.g., /input/trigger/value)");
+        }
+
+        // Handle both numeric and boolean values
+        if (json["value"].t() == crow::json::type::Number) {
+            value = json["value"].d();
+            boolean_value = (value >= 0.5f);
+        } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
+            boolean_value = json["value"].b();
+            value = boolean_value ? 1.0f : 0.0f;
+        }
+
+        simulator_->SetInputComponent(user_path.c_str(), component_path.c_str(), value, boolean_value);
+        return crow::response(200, "OK");
     });
 
     // Root endpoint for testing
@@ -217,7 +249,7 @@ void HttpServer::ServerThread() {
                "  GET  /device/pose?user_path=... - Get device pose\n"
                "  POST /device/pose           - Set device pose (supports /user/head, /user/hand/left, "
                "/user/hand/right, etc.)\n"
-               "  GET  /device/input?user_path=...&component=... - Get device input state\n"
+               "  GET  /device/input?user_path=...&component_path=... - Get device input state\n"
                "  POST /device/input          - Set device input state\n";
     });
 

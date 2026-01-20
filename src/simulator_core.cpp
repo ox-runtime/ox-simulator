@@ -96,22 +96,6 @@ void SimulatorCore::GetAllDevices(OxDeviceState* out_states, uint32_t* out_count
     }
 }
 
-bool SimulatorCore::ParseComponentPath(const char* component_path, std::string& component_name) {
-    // Component path is the full OpenXR path: "/user/hand/left/input/trigger/value"
-    // Extract the component part starting from /input/: "/input/trigger/value"
-
-    std::string path(component_path);
-
-    // Find the "/input/" portion in the full path
-    size_t input_pos = path.find("/input/");
-    if (input_pos == std::string::npos) {
-        return false;
-    }
-
-    component_name = path.substr(input_pos);  // Include "/input/"
-    return true;
-}
-
 OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, const char* component_path,
                                                         OxInputComponentState* out_state) {
     std::lock_guard<std::mutex> lock(state_mutex_);
@@ -131,22 +115,17 @@ OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, c
 
     const DeviceState::InputState& input = state_.device_inputs[device_index];
 
-    std::string component;
-    if (!ParseComponentPath(component_path, component)) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
     memset(out_state, 0, sizeof(OxInputComponentState));
 
     // Special case for 2D thumbstick
-    if (component == "/input/thumbstick") {
+    if (component_path == "/input/thumbstick") {
         out_state->x = input.thumbstick_x;
         out_state->y = input.thumbstick_y;
         return OX_COMPONENT_AVAILABLE;
     }
 
     // Look up component in map
-    auto it = g_component_map.find(component);
+    auto it = g_component_map.find(component_path);
     if (it == g_component_map.end()) {
         return OX_COMPONENT_UNAVAILABLE;
     }
@@ -207,13 +186,8 @@ void SimulatorCore::SetInputComponent(const char* user_path, const char* compone
 
     DeviceState::InputState& input = state_.device_inputs[device_index];
 
-    std::string component;
-    if (!ParseComponentPath(component_path, component)) {
-        return;
-    }
-
     // Look up component in map
-    auto it = g_component_map.find(component);
+    auto it = g_component_map.find(component_path);
     if (it == g_component_map.end()) {
         return;
     }

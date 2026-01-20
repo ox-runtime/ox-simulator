@@ -124,18 +124,18 @@ Content-Type: application/json
 
 #### Get Device Input
 ```bash
-GET http://localhost:8765/device/input?user_path=/user/hand/left&component=/input/trigger/value
+GET http://localhost:8765/device/input?user_path=/user/hand/left&component_path=/input/trigger/value
 ```
 
 **Query Parameters:**
 - `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`)
-- `component`: Input component path with `/input/` prefix (e.g., `/input/trigger/value`, `/input/squeeze/value`, `/input/thumbstick/x`)
+- `component_path`: Input component path with `/input/` prefix (e.g., `/input/trigger/value`, `/input/squeeze/value`, `/input/thumbstick/x`)
 
 **Response:**
 ```json
 {
   "user_path": "/user/hand/left",
-  "component": "/input/trigger/value",
+  "component_path": "/input/trigger/value",
   "boolean_value": false,
   "float_value": 0.8,
   "x": 0.0,
@@ -150,14 +150,14 @@ Content-Type: application/json
 
 {
   "user_path": "/user/hand/left",
-  "component": "/input/trigger/value",
+  "component_path": "/input/trigger/value",
   "value": 0.8
 }
 ```
 
 **Parameters:**
 - `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`)
-- `component`: Input component path with `/input/` prefix (e.g., `/input/trigger/value`, `/input/squeeze/value`, `/input/thumbstick/x`)
+- `component_path`: Input component path with `/input/` prefix (e.g., `/input/trigger/value`, `/input/squeeze/value`, `/input/thumbstick/x`)
 - `value`: Numeric value (0.0 to 1.0) or boolean
 
 **Common Input Components:**
@@ -207,14 +207,14 @@ curl -X POST http://localhost:8765/device/pose -H "Content-Type: application/jso
 
 **Get trigger value:**
 ```bash
-curl "http://localhost:8765/device/input?user_path=/user/hand/left&component=/input/trigger/value"
+curl "http://localhost:8765/device/input?user_path=/user/hand/left&component_path=/input/trigger/value"
 ```
 
 **Press the left trigger:**
 ```bash
 curl -X POST http://localhost:8765/device/input -H "Content-Type: application/json" -d '{
   "user_path": "/user/hand/left",
-  "component": "/input/trigger/value",
+  "component_path": "/input/trigger/value",
   "value": 1.0
 }'
 ```
@@ -268,7 +268,7 @@ response = requests.post(f"{BASE_URL}/device/pose", json=left_controller)
 print(f"Set left controller: {response.status_code}")
 
 # Get current trigger value
-response = requests.get(f"{BASE_URL}/device/input?user_path=/user/hand/left&component=/input/trigger/value")
+response = requests.get(f"{BASE_URL}/device/input?user_path=/user/hand/left&component_path=/input/trigger/value")
 if response.status_code == 200:
     trigger_state = response.json()
     print(f"Trigger value: {trigger_state['float_value']}")
@@ -276,7 +276,7 @@ if response.status_code == 200:
 # Press trigger on left controller
 trigger_input = {
     "user_path": "/user/hand/left",
-    "component": "/input/trigger/value",
+    "component_path": "/input/trigger/value",
     "value": 0.8
 }
 response = requests.post(f"{BASE_URL}/device/input", json=trigger_input)
@@ -285,7 +285,7 @@ print(f"Set trigger: {response.status_code}")
 # Press A button
 button_input = {
     "user_path": "/user/hand/left",
-    "component": "/input/a/click",
+    "component_path": "/input/a/click",
     "value": True
 }
 response = requests.post(f"{BASE_URL}/device/input", json=button_input)

@@ -77,9 +77,6 @@ class SimulatorCore {
     const DeviceProfile* profile_;
     DeviceState state_;
     mutable std::mutex state_mutex_;
-
-    // Helper to parse component path
-    bool ParseComponentPath(const char* component_path, std::string& component_name);
 };
 
 }  // namespace ox_sim
