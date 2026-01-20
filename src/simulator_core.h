@@ -15,10 +15,11 @@ struct DeviceState {
     // HMD pose
     OxPose hmd_pose;
 
-    // Controller states
-    OxControllerState controllers[2];  // Left, Right
+    // Tracked devices (controllers, etc.)
+    OxDeviceState devices[OX_MAX_DEVICES];
+    uint32_t device_count;
 
-    // Input components (simplified - stores common inputs)
+    // Input state per device (indexed same as devices array)
     struct InputState {
         // Trigger
         float trigger_value;
@@ -45,13 +46,10 @@ struct DeviceState {
         bool menu_click;
     };
 
-    InputState left_input;
-    InputState right_input;
+    InputState device_inputs[OX_MAX_DEVICES];
 
     // Connection status
     std::atomic<bool> hmd_connected;
-    std::atomic<bool> left_controller_connected;
-    std::atomic<bool> right_controller_connected;
 };
 
 class SimulatorCore {
@@ -68,15 +66,14 @@ class SimulatorCore {
 
     // Device state access (thread-safe)
     void GetHMDPose(OxPose* out_pose);
-    void GetControllerState(uint32_t controller_index, OxControllerState* out_state);
-    OxComponentResult GetInputComponentState(uint32_t controller_index, const char* component_path,
+    void GetAllDevices(OxDeviceState* out_states, uint32_t* out_count);
+    OxComponentResult GetInputComponentState(const char* user_path, const char* component_path,
                                              OxInputComponentState* out_state);
 
     // Update device state (called by API/GUI)
     void SetHMDPose(const OxPose& pose);
-    void SetControllerPose(uint32_t controller_index, const OxPose& pose, bool is_active);
-    void SetInputComponent(uint32_t controller_index, const char* component_path, float value,
-                           bool boolean_value = false);
+    void SetDevicePose(const char* user_path, const OxPose& pose, bool is_active);
+    void SetInputComponent(const char* user_path, const char* component_path, float value, bool boolean_value = false);
 
     // Connection status
     bool IsHMDConnected() const { return state_.hmd_connected.load(); }

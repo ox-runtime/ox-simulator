@@ -41,10 +41,9 @@ SimulatorCore::SimulatorCore() : profile_(nullptr) {
     state_.hmd_pose.position = {0.0f, 1.6f, 0.0f};
     state_.hmd_pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
 
-    // Default: HMD connected, controllers not connected
+    // Default: HMD connected, no devices initially
     state_.hmd_connected.store(true);
-    state_.left_controller_connected.store(false);
-    state_.right_controller_connected.store(false);
+    state_.device_count = 0;
 }
 
 SimulatorCore::~SimulatorCore() { Shutdown(); }
@@ -57,14 +56,22 @@ bool SimulatorCore::Initialize(const DeviceProfile* profile) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     profile_ = profile;
 
-    // Initialize controller poses (default positions)
-    state_.controllers[0].is_active = 0;
-    state_.controllers[0].pose.position = {-0.2f, 1.4f, -0.3f};  // Left controller
-    state_.controllers[0].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+    // Initialize devices (2 hand controllers by default)
+    state_.device_count = 2;
 
-    state_.controllers[1].is_active = 0;
-    state_.controllers[1].pose.position = {0.2f, 1.4f, -0.3f};  // Right controller
-    state_.controllers[1].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+    // Left hand controller
+    std::strncpy(state_.devices[0].user_path, "/user/hand/left", sizeof(state_.devices[0].user_path) - 1);
+    state_.devices[0].user_path[sizeof(state_.devices[0].user_path) - 1] = '\0';
+    state_.devices[0].is_active = 0;
+    state_.devices[0].pose.position = {-0.2f, 1.4f, -0.3f};
+    state_.devices[0].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+
+    // Right hand controller
+    std::strncpy(state_.devices[1].user_path, "/user/hand/right", sizeof(state_.devices[1].user_path) - 1);
+    state_.devices[1].user_path[sizeof(state_.devices[1].user_path) - 1] = '\0';
+    state_.devices[1].is_active = 0;
+    state_.devices[1].pose.position = {0.2f, 1.4f, -0.3f};
+    state_.devices[1].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
 
     return true;
 }
@@ -79,23 +86,21 @@ void SimulatorCore::GetHMDPose(OxPose* out_pose) {
     *out_pose = state_.hmd_pose;
 }
 
-void SimulatorCore::GetControllerState(uint32_t controller_index, OxControllerState* out_state) {
-    if (controller_index >= 2) {
-        out_state->is_active = 0;
-        return;
-    }
-
+void SimulatorCore::GetAllDevices(OxDeviceState* out_states, uint32_t* out_count) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    *out_state = state_.controllers[controller_index];
+    *out_count = state_.device_count;
+    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
+        out_states[i] = state_.devices[i];
+    }
 }
 
 bool SimulatorCore::ParseComponentPath(const char* component_path, std::string& component_name) {
-    // Component paths look like: /user/hand/left/input/trigger/value
-    // We need to extract the component part: trigger/value
+    // Component path is the full OpenXR path: "/user/hand/left/input/trigger/value"
+    // Extract just the component part after /input/: "trigger/value"
 
     std::string path(component_path);
 
-    // Find "/input/" and extract everything after it
+    // Find the "/input/" portion in the full path
     size_t input_pos = path.find("/input/");
     if (input_pos == std::string::npos) {
         return false;
@@ -105,15 +110,24 @@ bool SimulatorCore::ParseComponentPath(const char* component_path, std::string& 
     return true;
 }
 
-OxComponentResult SimulatorCore::GetInputComponentState(uint32_t controller_index, const char* component_path,
+OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, const char* component_path,
                                                         OxInputComponentState* out_state) {
-    if (controller_index >= 2) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    // Find the device by user path
+    int device_index = -1;
+    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
+        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
+            device_index = i;
+            break;
+        }
+    }
+
+    if (device_index < 0) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    std::lock_guard<std::mutex> lock(state_mutex_);
-
-    const DeviceState::InputState& input = (controller_index == 0) ? state_.left_input : state_.right_input;
+    const DeviceState::InputState& input = state_.device_inputs[device_index];
 
     std::string component;
     if (!ParseComponentPath(component_path, component)) {
@@ -156,27 +170,37 @@ void SimulatorCore::SetHMDPose(const OxPose& pose) {
     state_.hmd_pose = pose;
 }
 
-void SimulatorCore::SetControllerPose(uint32_t controller_index, const OxPose& pose, bool is_active) {
-    if (controller_index >= 2) return;
-
+void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, bool is_active) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    state_.controllers[controller_index].pose = pose;
-    state_.controllers[controller_index].is_active = is_active ? 1 : 0;
 
-    if (controller_index == 0) {
-        state_.left_controller_connected.store(is_active);
-    } else {
-        state_.right_controller_connected.store(is_active);
+    // Find the device by user path
+    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
+        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
+            state_.devices[i].pose = pose;
+            state_.devices[i].is_active = is_active ? 1 : 0;
+            return;
+        }
     }
 }
 
-void SimulatorCore::SetInputComponent(uint32_t controller_index, const char* component_path, float value,
+void SimulatorCore::SetInputComponent(const char* user_path, const char* component_path, float value,
                                       bool boolean_value) {
-    if (controller_index >= 2) return;
-
     std::lock_guard<std::mutex> lock(state_mutex_);
 
-    DeviceState::InputState& input = (controller_index == 0) ? state_.left_input : state_.right_input;
+    // Find the device by user path
+    int device_index = -1;
+    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
+        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
+            device_index = i;
+            break;
+        }
+    }
+
+    if (device_index < 0) {
+        return;
+    }
+
+    DeviceState::InputState& input = state_.device_inputs[device_index];
 
     std::string component;
     if (!ParseComponentPath(component_path, component)) {

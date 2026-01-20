@@ -153,8 +153,8 @@ static int simulator_initialize(void) {
         std::cout << "HTTP API server started successfully" << std::endl;
         std::cout << "Use API endpoints to control the simulator:" << std::endl;
         std::cout << "  GET/POST http://localhost:" << g_config.api_port << "/hmd/pose" << std::endl;
-        std::cout << "  GET/POST http://localhost:" << g_config.api_port << "/controller/0/pose" << std::endl;
-        std::cout << "  POST     http://localhost:" << g_config.api_port << "/controller/0/input" << std::endl;
+        std::cout << "  POST     http://localhost:" << g_config.api_port << "/device/pose" << std::endl;
+        std::cout << "  POST     http://localhost:" << g_config.api_port << "/device/input" << std::endl;
     } else if (g_config.mode == "gui") {
         std::cout << "Starting GUI interface..." << std::endl;
         if (!g_gui_window.Start(&g_simulator)) {
@@ -246,24 +246,23 @@ static void simulator_update_view_pose(int64_t predicted_time, uint32_t eye_inde
     out_pose->position.x += eye_offset;
 }
 
-static void simulator_update_controller_state(int64_t predicted_time, uint32_t controller_index,
-                                              OxControllerState* out_state) {
+static void simulator_update_devices(int64_t predicted_time, OxDeviceState* out_states, uint32_t* out_count) {
     if (!g_device_profile || !g_device_profile->has_controllers) {
-        out_state->is_active = 0;
+        *out_count = 0;
         return;
     }
 
-    g_simulator.GetControllerState(controller_index, out_state);
+    g_simulator.GetAllDevices(out_states, out_count);
 }
 
-static OxComponentResult simulator_get_input_component_state(int64_t predicted_time, uint32_t controller_index,
+static OxComponentResult simulator_get_input_component_state(int64_t predicted_time, const char* user_path,
                                                              const char* component_path,
                                                              OxInputComponentState* out_state) {
     if (!g_device_profile || !g_device_profile->has_controllers) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    return g_simulator.GetInputComponentState(controller_index, component_path, out_state);
+    return g_simulator.GetInputComponentState(user_path, component_path, out_state);
 }
 
 static uint32_t simulator_get_interaction_profiles(const char** out_profiles, uint32_t max_count) {
@@ -290,7 +289,7 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     callbacks->get_tracking_capabilities = simulator_get_tracking_capabilities;
     callbacks->update_pose = simulator_update_pose;
     callbacks->update_view_pose = simulator_update_view_pose;
-    callbacks->update_controller_state = simulator_update_controller_state;
+    callbacks->update_devices = simulator_update_devices;
     callbacks->get_input_component_state = simulator_get_input_component_state;
     callbacks->get_interaction_profiles = simulator_get_interaction_profiles;
 

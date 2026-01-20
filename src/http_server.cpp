@@ -100,77 +100,80 @@ void HttpServer::ServerThread() {
         return crow::response(200, "OK");
     });
 
-    // POST /controller/<id>/pose - Set controller pose
-    CROW_ROUTE(app, "/controller/<int>/pose")
-        .methods("POST"_method)([this](const crow::request& req, int controller_id) {
-            if (controller_id < 0 || controller_id > 1) {
-                return crow::response(400, "Invalid controller ID (must be 0 or 1)");
-            }
+    // POST /device/pose - Set device pose (user_path based)
+    CROW_ROUTE(app, "/device/pose").methods("POST"_method)([this](const crow::request& req) {
+        auto json = crow::json::load(req.body);
+        if (!json) {
+            return crow::response(400, "Invalid JSON");
+        }
 
-            auto json = crow::json::load(req.body);
-            if (!json) {
-                return crow::response(400, "Invalid JSON");
-            }
+        // Validate user_path field
+        if (!json.has("user_path")) {
+            return crow::response(
+                400, "Missing required field: user_path (e.g., /user/hand/left, /user/vive_tracker/waist)");
+        }
 
-            // Validate required fields
-            if (!json.has("position") || !json.has("orientation") || !json["position"].has("x") ||
-                !json["position"].has("y") || !json["position"].has("z") || !json["orientation"].has("x") ||
-                !json["orientation"].has("y") || !json["orientation"].has("z") || !json["orientation"].has("w")) {
-                return crow::response(400, "Missing required fields: position{x,y,z}, orientation{x,y,z,w}");
-            }
+        std::string user_path = json["user_path"].s();
 
-            bool is_active = json.has("active") ? json["active"].b() : true;
+        // Validate required fields
+        if (!json.has("position") || !json.has("orientation") || !json["position"].has("x") ||
+            !json["position"].has("y") || !json["position"].has("z") || !json["orientation"].has("x") ||
+            !json["orientation"].has("y") || !json["orientation"].has("z") || !json["orientation"].has("w")) {
+            return crow::response(400, "Missing required fields: position{x,y,z}, orientation{x,y,z,w}");
+        }
 
-            OxPose pose;
-            pose.position.x = json["position"]["x"].d();
-            pose.position.y = json["position"]["y"].d();
-            pose.position.z = json["position"]["z"].d();
-            pose.orientation.x = json["orientation"]["x"].d();
-            pose.orientation.y = json["orientation"]["y"].d();
-            pose.orientation.z = json["orientation"]["z"].d();
-            pose.orientation.w = json["orientation"]["w"].d();
+        bool is_active = json.has("active") ? json["active"].b() : true;
 
-            simulator_->SetControllerPose(controller_id, pose, is_active);
-            return crow::response(200, "OK");
-        });
+        OxPose pose;
+        pose.position.x = json["position"]["x"].d();
+        pose.position.y = json["position"]["y"].d();
+        pose.position.z = json["position"]["z"].d();
+        pose.orientation.x = json["orientation"]["x"].d();
+        pose.orientation.y = json["orientation"]["y"].d();
+        pose.orientation.z = json["orientation"]["z"].d();
+        pose.orientation.w = json["orientation"]["w"].d();
 
-    // POST /controller/<id>/input - Set controller input state
-    CROW_ROUTE(app, "/controller/<int>/input")
-        .methods("POST"_method)([this](const crow::request& req, int controller_id) {
-            if (controller_id < 0 || controller_id > 1) {
-                return crow::response(400, "Invalid controller ID (must be 0 or 1)");
-            }
+        simulator_->SetDevicePose(user_path.c_str(), pose, is_active);
+        return crow::response(200, "OK");
+    });
 
-            auto json = crow::json::load(req.body);
-            if (!json) {
-                return crow::response(400, "Invalid JSON");
-            }
+    // POST /device/input - Set device input state (user_path based)
+    CROW_ROUTE(app, "/device/input").methods("POST"_method)([this](const crow::request& req) {
+        auto json = crow::json::load(req.body);
+        if (!json) {
+            return crow::response(400, "Invalid JSON");
+        }
 
-            // Validate required fields
-            if (!json.has("component") || !json.has("value")) {
-                return crow::response(400, "Missing required fields: component, value");
-            }
+        // Validate required fields
+        if (!json.has("user_path") || !json.has("component") || !json.has("value")) {
+            return crow::response(400, "Missing required fields: user_path, component, value");
+        }
 
-            std::string component = json["component"].s();
-            float value = 0.0f;
-            bool boolean_value = false;
+        std::string user_path = json["user_path"].s();
+        std::string component = json["component"].s();
+        float value = 0.0f;
+        bool boolean_value = false;
 
-            // Handle both numeric and boolean values
-            if (json["value"].t() == crow::json::type::Number) {
-                value = json["value"].d();
-                boolean_value = (value >= 0.5f);
-            } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
-                boolean_value = json["value"].b();
-                value = boolean_value ? 1.0f : 0.0f;
-            }
+        // Validate component path format
+        if (component.find("/input/") != 0) {
+            return crow::response(400, "Component path must start with /input/ (e.g., /input/trigger/value)");
+        }
 
-            // Convert API component path to OpenXR format
-            std::string component_path =
-                "/user/hand/" + std::string(controller_id == 0 ? "left" : "right") + "/input/" + component;
+        // Handle both numeric and boolean values
+        if (json["value"].t() == crow::json::type::Number) {
+            value = json["value"].d();
+            boolean_value = (value >= 0.5f);
+        } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
+            boolean_value = json["value"].b();
+            value = boolean_value ? 1.0f : 0.0f;
+        }
 
-            simulator_->SetInputComponent(controller_id, component_path.c_str(), value, boolean_value);
-            return crow::response(200, "OK");
-        });
+        // Build full OpenXR component path: /user/hand/left/input/trigger/value
+        std::string component_path = user_path + component;
+
+        simulator_->SetInputComponent(user_path.c_str(), component_path.c_str(), value, boolean_value);
+        return crow::response(200, "OK");
+    });
 
     // Root endpoint for testing
     CROW_ROUTE(app, "/")
@@ -178,8 +181,8 @@ void HttpServer::ServerThread() {
         return "ox Simulator API Server\n\nAvailable endpoints:\n"
                "  GET  /hmd/pose\n"
                "  POST /hmd/pose\n"
-               "  POST /controller/<id>/pose\n"
-               "  POST /controller/<id>/input\n";
+               "  POST /device/pose\n"
+               "  POST /device/input\n";
     });
 
     std::cout << "Starting HTTP server on port " << port_ << "..." << std::endl;

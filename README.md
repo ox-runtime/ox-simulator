@@ -87,12 +87,13 @@ Content-Type: application/json
 }
 ```
 
-#### Set Controller Pose
+#### Set Device Pose
 ```bash
-POST http://localhost:8765/controller/<id>/pose
+POST http://localhost:8765/device/pose
 Content-Type: application/json
 
 {
+  "user_path": "/user/hand/left",
   "active": true,
   "position": {"x": -0.2, "y": 1.4, "z": -0.3},
   "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
@@ -100,37 +101,38 @@ Content-Type: application/json
 ```
 
 **Parameters:**
-- `<id>`: Controller ID (0 = left, 1 = right)
-- `active`: Whether the controller is active/connected (optional, default: true)
+- `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`, `/user/vive_tracker/waist`, `/user/vive_tracker/left_foot`)
+- `active`: Whether the device is active/connected (optional, default: true)
 
-#### Set Controller Input
+#### Set Device Input
 ```bash
-POST http://localhost:8765/controller/<id>/input
+POST http://localhost:8765/device/input
 Content-Type: application/json
 
 {
-  "component": "trigger/value",
+  "user_path": "/user/hand/left",
+  "component": "/input/trigger/value",
   "value": 0.8
 }
 ```
 
 **Parameters:**
-- `<id>`: Controller ID (0 = left, 1 = right)
-- `component`: Input component path (e.g., `trigger/value`, `squeeze/value`, `thumbstick/x`, `thumbstick/y`, `a/click`, `b/click`)
+- `user_path`: OpenXR user path for the device (e.g., `/user/hand/left`, `/user/hand/right`)
+- `component`: Input component path with `/input/` prefix (e.g., `/input/trigger/value`, `/input/squeeze/value`, `/input/thumbstick/x`)
 - `value`: Numeric value (0.0 to 1.0) or boolean
 
 **Common Input Components:**
-- `trigger/value` - Trigger analog value (0.0 - 1.0)
-- `trigger/click` - Trigger button click (boolean)
-- `squeeze/value` - Grip squeeze analog value (0.0 - 1.0)
-- `squeeze/click` - Grip button click (boolean)
-- `thumbstick/x` - Thumbstick X axis (-1.0 to 1.0)
-- `thumbstick/y` - Thumbstick Y axis (-1.0 to 1.0)
-- `thumbstick/click` - Thumbstick button click (boolean)
-- `a/click` - A button click (boolean)
-- `b/click` - B button click (boolean)
-- `x/click` - X button click (boolean)
-- `y/click` - Y button click (boolean)
+- `/input/trigger/value` - Trigger analog value (0.0 - 1.0)
+- `/input/trigger/click` - Trigger button click (boolean)
+- `/input/squeeze/value` - Grip squeeze analog value (0.0 - 1.0)
+- `/input/squeeze/click` - Grip button click (boolean)
+- `/input/thumbstick/x` - Thumbstick X axis (-1.0 to 1.0)
+- `/input/thumbstick/y` - Thumbstick Y axis (-1.0 to 1.0)
+- `/input/thumbstick/click` - Thumbstick button click (boolean)
+- `/input/a/click` - A button click (boolean)
+- `/input/b/click` - B button click (boolean)
+- `/input/x/click` - X button click (boolean)
+- `/input/y/click` - Y button click (boolean)
 
 ## API Usage Examples
 
@@ -146,7 +148,8 @@ curl -X POST http://localhost:8765/hmd/pose -H "Content-Type: application/json" 
 
 **Position left controller:**
 ```bash
-curl -X POST http://localhost:8765/controller/0/pose -H "Content-Type: application/json" -d '{
+curl -X POST http://localhost:8765/device/pose -H "Content-Type: application/json" -d '{
+  "user_path": "/user/hand/left",
   "active": true,
   "position": {"x": -0.2, "y": 1.4, "z": -0.3},
   "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
@@ -155,9 +158,20 @@ curl -X POST http://localhost:8765/controller/0/pose -H "Content-Type: applicati
 
 **Press the left trigger:**
 ```bash
-curl -X POST http://localhost:8765/controller/0/input -H "Content-Type: application/json" -d '{
-  "component": "trigger/value",
+curl -X POST http://localhost:8765/device/input -H "Content-Type: application/json" -d '{
+  "user_path": "/user/hand/left",
+  "component": "/input/trigger/value",
   "value": 1.0
+}'
+```
+
+**Position a Vive tracker on waist:**
+```bash
+curl -X POST http://localhost:8765/device/pose -H "Content-Type: application/json" -d '{
+  "user_path": "/user/vive_tracker/waist",
+  "active": true,
+  "position": {"x": 0, "y": 1.0, "z": 0},
+  "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
 }'
 ```
 
@@ -179,28 +193,41 @@ print(f"Set HMD pose: {response.status_code}")
 
 # Activate and position left controller
 left_controller = {
+    "user_path": "/user/hand/left",
     "active": True,
     "position": {"x": -0.2, "y": 1.4, "z": -0.3},
     "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
 }
-response = requests.post(f"{BASE_URL}/controller/0/pose", json=left_controller)
+response = requests.post(f"{BASE_URL}/device/pose", json=left_controller)
 print(f"Set left controller: {response.status_code}")
 
 # Press trigger on left controller
 trigger_input = {
-    "component": "trigger/value",
+    "user_path": "/user/hand/left",
+    "component": "/input/trigger/value",
     "value": 0.8
 }
-response = requests.post(f"{BASE_URL}/controller/0/input", json=trigger_input)
+response = requests.post(f"{BASE_URL}/device/input", json=trigger_input)
 print(f"Set trigger: {response.status_code}")
 
 # Press A button
 button_input = {
-    "component": "a/click",
+    "user_path": "/user/hand/left",
+    "component": "/input/a/click",
     "value": True
 }
-response = requests.post(f"{BASE_URL}/controller/0/input", json=button_input)
+response = requests.post(f"{BASE_URL}/device/input", json=button_input)
 print(f"Press A button: {response.status_code}")
+
+# Add Vive tracker on waist
+tracker_pose = {
+    "user_path": "/user/vive_tracker/waist",
+    "active": True,
+    "position": {"x": 0, "y": 1.0, "z": 0},
+    "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}
+}
+response = requests.post(f"{BASE_URL}/device/pose", json=tracker_pose)
+print(f"Set waist tracker: {response.status_code}")
 ```
 
 ## Testing
