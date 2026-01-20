@@ -4,7 +4,7 @@ project(ox-driver-simulator VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(OUTPUT_FOLDER "simulator_driver")
+set(OUTPUT_FOLDER "ox_simulator")
 
 # Source files
 set(DRIVER_SOURCES
@@ -16,10 +16,10 @@ set(DRIVER_SOURCES
 )
 
 # Driver shared library - output as driver.dll / libdriver.so
-add_library(simulator_driver SHARED ${DRIVER_SOURCES})
+add_library(ox_simulator SHARED ${DRIVER_SOURCES})
 
 # Include directories
-target_include_directories(simulator_driver PRIVATE 
+target_include_directories(ox_simulator PRIVATE
     src
     ${CMAKE_SOURCE_DIR}  # For ox_driver.h in root directory
     ${CMAKE_SOURCE_DIR}/third_party  # For third-party headers (crow, asio)
@@ -28,12 +28,12 @@ target_include_directories(simulator_driver PRIVATE
 # Platform-specific settings
 if(WIN32)
     # Windows requires ws2_32 for networking and _WIN32_WINNT definition for ASIO
-    target_link_libraries(simulator_driver PRIVATE ws2_32)
-    target_compile_definitions(simulator_driver PRIVATE _WIN32_WINNT=0x0601)  # Windows 7+
+    target_link_libraries(ox_simulator PRIVATE ws2_32)
+    target_compile_definitions(ox_simulator PRIVATE _WIN32_WINNT=0x0601)  # Windows 7+
 endif()
 
 # Rename to standardized driver library name
-set_target_properties(simulator_driver PROPERTIES
+set_target_properties(ox_simulator PROPERTIES
     OUTPUT_NAME "driver"
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}
@@ -44,7 +44,7 @@ set_target_properties(simulator_driver PROPERTIES
 )
 
 # Copy config.json to output directory
-add_custom_command(TARGET simulator_driver POST_BUILD
+add_custom_command(TARGET ox_simulator POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config.json
         ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}/config.json
@@ -52,10 +52,10 @@ add_custom_command(TARGET simulator_driver POST_BUILD
 )
 
 # Print build completion message
-add_custom_command(TARGET simulator_driver POST_BUILD
+add_custom_command(TARGET ox_simulator POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "====================================================================="
-    COMMAND ${CMAKE_COMMAND} -E echo "ox Simulator Driver build complete!"
+    COMMAND ${CMAKE_COMMAND} -E echo "ox simulator build complete!"
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "Output: ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}"
     COMMAND ${CMAKE_COMMAND} -E echo ""

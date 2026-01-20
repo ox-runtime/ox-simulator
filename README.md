@@ -1,15 +1,15 @@
-# ox-driver-simulator
+# ox-simulator
 
-A simulator driver for the [ox](https://github.com/freebirdxr/ox) OpenXR runtime. This can help test and emulate different VR devices (Quest, Vive, Vive trackers, etc.) programmatically.
+A simulator for the [ox](https://github.com/freebirdxr/ox) OpenXR runtime. This can help test and emulate different VR devices (Quest, Vive, Vive trackers, etc.) programmatically.
 
 ## Purpose
 
-This driver allows developers to test OpenXR applications without physical hardware by simulating popular VR devices. It provides two interface modes for controlling the simulated devices:
+This simulator allows developers to test OpenXR applications without physical hardware by simulating popular VR devices. It provides two interface modes for controlling the simulated devices:
 - Web server interface - locally-hosted API for programmatic control
 - GUI interface - windowed application for manual control (TBD)
 ## Building
 
-1. Clone this repository using `git clone https://github.com/freebirdxr/ox-driver-example`
+1. Clone this repository using `git clone https://github.com/freebirdxr/ox-simulator`
 2. Download [ox_driver.h](https://github.com/freebirdxr/ox/releases/latest/download/driver.h) and place it inside this folder.
 3. Compile using `cmake`:
 
@@ -18,11 +18,11 @@ cmake -B build
 cmake --build build --config Release
 ```
 
-4. Your driver will be built inside `build/simulator_driver`.
+4. Your driver will be built inside `build/ox_simulator`.
 
 ## Installation
 
-Copy the driver (i.e. the `build/simulator_driver` folder) to the ox runtime's `drivers` folder:
+Copy the driver (i.e. the `build/ox_simulator` folder) to the ox runtime's `drivers` folder:
 
 For example:
 
@@ -31,13 +31,13 @@ ox-runtime/
 ├── bin/
 │   ├── ox-service.exe (or ox-service on Linux)
 │   └── drivers/
-│       └── simulator_driver/
+│       └── ox_simulator/
 │           └── driver.dll (or libdriver.so)
 ```
 
 ## Configuration
 
-Edit the `config.json` file in the deployed driver folder (`drivers/simulator_driver/config.json`):
+Edit the `config.json` file in the deployed driver folder (`drivers/ox_simulator/config.json`):
 
 ```json
 {
