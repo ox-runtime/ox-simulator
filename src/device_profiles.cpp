@@ -6,6 +6,7 @@
 
 namespace ox_sim {
 
+// clang-format off
 // ===== Oculus Touch Controller Components =====
 static const std::vector<ComponentDef> OCULUS_TOUCH_COMPONENTS = {
     // Trigger
@@ -95,34 +96,34 @@ static const DeviceProfile QUEST_2_PROFILE = {
     "Meta Quest 2 (Simulated)",
     "Meta Platforms",
     "QUEST2-SIM",
-    0x2833,  // Meta VID
-    0x0186,  // Quest 2 PID
+    0x2833, // Meta VID
+    0x0186, // Quest 2 PID
 
     // Display: 1832x1920 per eye
     1832,
     1920,
     1832,
     1920,
-    90.0f,  // 90Hz (also supports 120Hz)
+    90.0f, // 90Hz (also supports 120Hz)
 
     // FOV (approximate Quest 2 values in radians)
-    -0.785398f,  // left: ~45 degrees
-    0.785398f,   // right: ~45 degrees
-    0.872665f,   // up: ~50 degrees
-    -0.872665f,  // down: ~50 degrees
+    -0.785398f, // left: ~45 degrees
+    0.785398f,  // right: ~45 degrees
+    0.872665f,  // up: ~50 degrees
+    -0.872665f, // down: ~50 degrees
 
     // Tracking
-    true,  // position tracking
-    true,  // orientation tracking
+    true, // position tracking
+    true, // orientation tracking
 
     // Interaction profile
     "/interaction_profiles/oculus/touch_controller",
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {}},  // HMD - always active, no input components
-        {"/user/hand/left", "left_controller", true, false, OCULUS_TOUCH_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, OCULUS_TOUCH_COMPONENTS},
+        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}}, // HMD - always active, no input components
+        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
+        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
     },
 };
 
@@ -141,13 +142,13 @@ static const DeviceProfile QUEST_3_PROFILE = {
     2208,
     2064,
     2208,
-    120.0f,  // 120Hz
+    120.0f, // 120Hz
 
     // FOV (Quest 3 has slightly wider FOV)
-    -0.872665f,  // left: ~50 degrees
-    0.872665f,   // right: ~50 degrees
-    0.959931f,   // up: ~55 degrees
-    -0.959931f,  // down: ~55 degrees
+    -0.872665f, // left: ~50 degrees
+    0.872665f,  // right: ~50 degrees
+    0.959931f,  // up: ~55 degrees
+    -0.959931f, // down: ~55 degrees
 
     true,
     true,
@@ -156,9 +157,9 @@ static const DeviceProfile QUEST_3_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {}},
-        {"/user/hand/left", "left_controller", true, false, OCULUS_TOUCH_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, OCULUS_TOUCH_COMPONENTS},
+        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
+        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
+        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
     },
 };
 
@@ -168,7 +169,7 @@ static const DeviceProfile VIVE_PROFILE = {
     "HTC Vive (Simulated)",
     "HTC Corporation",
     "VIVE-SIM",
-    0x0BB4,  // HTC VID
+    0x0BB4, // HTC VID
     0x2C87,
 
     // Display: 1080x1200 per eye
@@ -191,9 +192,9 @@ static const DeviceProfile VIVE_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {}},
-        {"/user/hand/left", "left_controller", true, false, VIVE_CONTROLLER_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, VIVE_CONTROLLER_COMPONENTS},
+        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
+        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_CONTROLLER_COMPONENTS},
+        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_CONTROLLER_COMPONENTS},
     },
 };
 
@@ -203,7 +204,7 @@ static const DeviceProfile INDEX_PROFILE = {
     "Valve Index HMD (Simulated)",
     "Valve Corporation",
     "INDEX-SIM",
-    0x28DE,  // Valve VID
+    0x28DE, // Valve VID
     0x2012,
 
     // Display: 1440x1600 per eye
@@ -211,10 +212,10 @@ static const DeviceProfile INDEX_PROFILE = {
     1600,
     1440,
     1600,
-    144.0f,  // 144Hz
+    144.0f, // 144Hz
 
     // FOV (Index has wide FOV)
-    -0.959931f,  // ~55 degrees
+    -0.959931f, // ~55 degrees
     0.959931f,
     0.959931f,
     -0.959931f,
@@ -226,9 +227,9 @@ static const DeviceProfile INDEX_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {}},
-        {"/user/hand/left", "left_controller", true, false, INDEX_CONTROLLER_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, INDEX_CONTROLLER_COMPONENTS},
+        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
+        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, INDEX_CONTROLLER_COMPONENTS},
+        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, INDEX_CONTROLLER_COMPONENTS},
     },
 };
 
@@ -239,8 +240,8 @@ static const DeviceProfile VIVE_TRACKER_PROFILE = {
     "HTC Vive Tracker (Simulated)",
     "HTC Corporation",
     "VIVETRK-SIM",
-    0x0BB4,  // HTC VID
-    0x0000,  // Generic tracker PID
+    0x0BB4, // HTC VID
+    0x0000, // Generic tracker PID
 
     // Display properties (not applicable for trackers, but required by structure)
     0,
@@ -255,23 +256,23 @@ static const DeviceProfile VIVE_TRACKER_PROFILE = {
     0.0f,
     0.0f,
 
-    false,  // No position tracking for HMD (this is tracker-only)
-    false,  // No orientation tracking for HMD
+    false, // No position tracking for HMD (this is tracker-only)
+    false, // No orientation tracking for HMD
 
     "/interaction_profiles/htc/vive_tracker_htcx",
 
     // Devices - Trackers only (no HMD)
-    // Note: Trackers are standalone pose-tracking devices
-    // Applications using trackers typically don't render, just track poses
     {
         // Trackers with common roles - set to active by default
-        {"/user/vive_tracker_htcx/role/waist", "waist_tracker", true, true, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/left_foot", "left_foot_tracker", true, true, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/right_foot", "right_foot_tracker", true, true, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/left_shoulder", "left_shoulder_tracker", true, true, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/right_shoulder", "right_shoulder_tracker", true, true, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/waist", "waist_tracker", true, true, {{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/left_foot", "left_foot_tracker", true, true, {{-0.15f, 0.1f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/right_foot", "right_foot_tracker", true, true, {{0.15f, 0.1f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/left_shoulder", "left_shoulder_tracker", true, true, {{-0.2f, 1.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/right_shoulder", "right_shoulder_tracker", true, true, {{0.2f, 1.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
     },
 };
+
+// clang-format on
 
 // Map for easy lookup
 static const std::map<std::string, DeviceType> NAME_TO_TYPE = {
@@ -281,6 +282,7 @@ static const std::map<std::string, DeviceType> NAME_TO_TYPE = {
     {"valve_index", DeviceType::VALVE_INDEX},
     {"htc_vive_tracker", DeviceType::HTC_VIVE_TRACKER},
 };
+// clang-format on
 
 const DeviceProfile& GetDeviceProfile(DeviceType type) {
     switch (type) {

@@ -55,13 +55,9 @@ class SimulatorCore {
     OxComponentResult GetInputComponentState(const char* user_path, const char* component_path,
                                              OxInputComponentState* out_state);
 
-    // Update device state (called by API/GUI)
+    // Update device state
     void SetDevicePose(const char* user_path, const OxPose& pose, bool is_active);
     void SetInputComponent(const char* user_path, const char* component_path, float value);
-
-    // Get device state pointer for direct access (for API server)
-    DeviceState* GetDeviceState() { return &state_; }
-    std::mutex& GetStateMutex() { return state_mutex_; }
 
    private:
     const DeviceProfile* profile_;

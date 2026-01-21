@@ -14,7 +14,7 @@ enum class DeviceType {
     HTC_VIVE,
     VALVE_INDEX,
     HTC_VIVE_TRACKER,
-    // Add more device types here in the future
+    // Add more device types here
 };
 
 // Input component type
@@ -37,6 +37,7 @@ struct DeviceDef {
     const char* role;                      // e.g., "hmd", "left_controller", "right_controller"
     bool is_tracked;                       // Whether this device has pose tracking
     bool always_active;                    // Whether device is always active (e.g., HMD)
+    OxPose default_pose;                   // Default pose for this device
     std::vector<ComponentDef> components;  // Input components for this device
 };
 

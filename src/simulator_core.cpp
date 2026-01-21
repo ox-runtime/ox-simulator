@@ -31,39 +31,8 @@ bool SimulatorCore::Initialize(const DeviceProfile* profile) {
         // Set active state
         state_.devices[i].is_active = dev_def.always_active ? 1 : 0;
 
-        // Set default poses based on role
-        if (std::strcmp(dev_def.role, "hmd") == 0) {
-            // HMD at eye level
-            state_.devices[i].pose.position = {0.0f, 1.6f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "left_controller") == 0) {
-            // Left hand
-            state_.devices[i].pose.position = {-0.2f, 1.4f, -0.3f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "right_controller") == 0) {
-            // Right hand
-            state_.devices[i].pose.position = {0.2f, 1.4f, -0.3f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "waist_tracker") == 0) {
-            state_.devices[i].pose.position = {0.0f, 1.0f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "left_foot_tracker") == 0) {
-            state_.devices[i].pose.position = {-0.15f, 0.1f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "right_foot_tracker") == 0) {
-            state_.devices[i].pose.position = {0.15f, 0.1f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "left_shoulder_tracker") == 0) {
-            state_.devices[i].pose.position = {-0.2f, 1.5f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else if (std::strcmp(dev_def.role, "right_shoulder_tracker") == 0) {
-            state_.devices[i].pose.position = {0.2f, 1.5f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        } else {
-            // Default position for other devices
-            state_.devices[i].pose.position = {0.0f, 1.0f, 0.0f};
-            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
-        }
+        // Set default pose from profile
+        state_.devices[i].pose = dev_def.default_pose;
 
         // Initialize input state (all components to zero/false)
         state_.device_inputs[i].float_values.clear();
