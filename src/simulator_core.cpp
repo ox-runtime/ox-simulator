@@ -118,7 +118,7 @@ OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, c
     memset(out_state, 0, sizeof(OxInputComponentState));
 
     // Special case for 2D thumbstick
-    if (component_path == "/input/thumbstick") {
+    if (std::strcmp(component_path, "/input/thumbstick") == 0) {
         out_state->x = input.thumbstick_x;
         out_state->y = input.thumbstick_y;
         return OX_COMPONENT_AVAILABLE;
