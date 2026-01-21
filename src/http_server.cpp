@@ -155,7 +155,6 @@ void HttpServer::ServerThread() {
         }
 
         crow::json::wvalue response;
-        response["binding_path"] = full_binding_path;
         response["boolean_value"] = state.boolean_value;
         response["float_value"] = state.float_value;
         response["x"] = state.x;
