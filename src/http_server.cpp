@@ -69,20 +69,6 @@ void HttpServer::ServerThread() {
 
     crow::SimpleApp app;
 
-    CROW_ROUTE(app, "/v1/devices").methods("GET"_method)([this]() {
-        OxDeviceState devices[OX_MAX_DEVICES];
-        uint32_t device_count;
-        simulator_->GetAllDevices(devices, &device_count);
-
-        crow::json::wvalue response;
-        crow::json::wvalue paths_array(crow::json::type::List);
-        for (uint32_t i = 0; i < device_count; ++i) {
-            paths_array[i] = devices[i].user_path;
-        }
-        response["paths"] = std::move(paths_array);
-        return crow::response(response);
-    });
-
     CROW_ROUTE(app, "/v1/devices/<path>").methods("GET"_method)([this](const std::string& user_path) {
         OxDeviceState devices[OX_MAX_DEVICES];
         uint32_t device_count;
@@ -273,9 +259,8 @@ void HttpServer::ServerThread() {
     CROW_ROUTE(app, "/")
     ([]() {
         return "ox Simulator API Server\n\nAvailable endpoints:\n"
-               "  GET  /v1/profile              - Get current device profile info\n"
+               "  GET  /v1/profile              - Get current device profile (devices and inputs)\n"
                "  PUT  /v1/profile              - Switch device profile\n"
-               "  GET  /v1/devices              - List all devices\n"
                "  GET  /v1/devices/<user_path>  - Get device pose\n"
                "  PUT  /v1/devices/<user_path>  - Set device pose\n"
                "  GET  /v1/inputs/<binding_path>  - Get input component state\n"

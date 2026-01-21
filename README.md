@@ -128,22 +128,6 @@ Content-Type: application/json
 - `valve_index` - Valve Index
 - `htc_vive_tracker` - HTC Vive Trackers (no HMD)
 
-#### List Devices
-```bash
-GET http://localhost:8765/v1/devices
-```
-
-**Response:**
-```json
-{
-  "paths": [
-    "/user/head",
-    "/user/hand/left",
-    "/user/hand/right"
-  ]
-}
-```
-
 #### Get Device State
 ```bash
 GET http://localhost:8765/v1/devices/user/hand/left
@@ -224,11 +208,6 @@ curl -X PUT http://localhost:8765/v1/profile -H "Content-Type: application/json"
 curl -X PUT http://localhost:8765/v1/profile -H "Content-Type: application/json" -d '{"device": "htc_vive_tracker"}'
 ```
 
-**List all devices:**
-```bash
-curl http://localhost:8765/v1/devices
-```
-
 **Get left controller state:**
 ```bash
 curl http://localhost:8765/v1/devices/user/hand/left
@@ -292,12 +271,6 @@ response = requests.put(f"{BASE_URL}/v1/profile", json=switch_request)
 if response.status_code == 200:
     result = response.json()
     print(f"Switched to: {result['device']}")
-
-# List all devices
-response = requests.get(f"{BASE_URL}/v1/devices")
-if response.status_code == 200:
-    devices = response.json()
-    print(f"Available devices: {devices['paths']}")
 
 # Get current left controller state
 response = requests.get(f"{BASE_URL}/v1/devices/user/hand/left")
