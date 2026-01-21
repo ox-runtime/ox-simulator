@@ -65,7 +65,7 @@ bool SimulatorCore::Initialize(const DeviceProfile* profile) {
 
         // Set user path
         std::strncpy(state_.devices[i].user_path, dev_def.user_path, sizeof(state_.devices[i].user_path) - 1);
-        state_.devices[i].user_path[sizeof(state_.devices[i].user_path) - 1] = '\\0';
+        state_.devices[i].user_path[sizeof(state_.devices[i].user_path) - 1] = '\0';
 
         // Set active state
         state_.devices[i].is_active = dev_def.always_active ? 1 : 0;
