@@ -1,11 +1,11 @@
 # ox-simulator
 
-A simulator for the [ox](https://github.com/ox-runtime/ox) OpenXR runtime. This can help test and emulate different VR devices (Quest, Vive, Vive trackers, etc.) programmatically.
+A simulator for the [ox](https://github.com/ox-runtime/ox) OpenXR runtime. This can help test and emulate different VR devices (Quest, Vive, Index, Vive trackers, etc.) programmatically with runtime device switching.
 
 ## Purpose
 
 This simulator allows developers to test OpenXR applications without physical hardware by simulating popular VR devices. It provides two interface modes for controlling the simulated devices:
-- Web server interface - locally-hosted API for programmatic control
+- Web server interface - locally-hosted API for programmatic control and device switching
 - GUI interface - windowed application for manual control (TBD)
 ## Building
 
@@ -44,12 +44,12 @@ Edit the `config.json` file in the deployed driver folder (`drivers/ox_simulator
   "device": "oculus_quest_2",
   "mode": "api",
   "api_port": 8765,
-  "comment": "Device options: oculus_quest_2, oculus_quest_3, htc_vive, valve_index. Mode options: api, gui"
+  "comment": "Device options: oculus_quest_2, oculus_quest_3, htc_vive, valve_index, htc_vive_tracker. Mode options: api, gui"
 }
 ```
 
 **Configuration Options:**
-- `device`: VR device to emulate (`oculus_quest_2`, `oculus_quest_3`, `htc_vive`, `valve_index`)
+- `device`: VR device to emulate (`oculus_quest_2`, `oculus_quest_3`, `htc_vive`, `valve_index`, `htc_vive_tracker`)
 - `mode`: Interface mode (`api` for HTTP server, `gui` for graphical interface)
 - `api_port`: Port for HTTP API server (default: 8765)
 
@@ -63,6 +63,73 @@ The simulator starts automatically when the ox service is launched.
 
 The simulator provides a REST API for controlling virtual devices:
 
+#### Get Current Device Profile
+```bash
+GET http://localhost:8765/v1/profile
+```
+
+**Response:**
+```json
+{
+  "type": "Meta Quest 2 (Simulated)",
+  "manufacturer": "Meta Platforms",
+  "interaction_profile": "/interaction_profiles/oculus/touch_controller",
+  "devices": [
+    {
+      "user_path": "/user/head",
+      "role": "hmd",
+      "is_tracked": true,
+      "always_active": true,
+      "components": []
+    },
+    {
+      "user_path": "/user/hand/left",
+      "role": "left_controller",
+      "is_tracked": true,
+      "always_active": false,
+      "components": [
+        {
+          "path": "/input/trigger/value",
+          "type": "float",
+          "description": "Trigger analog value"
+        },
+        {
+          "path": "/input/trigger/touch",
+          "type": "boolean",
+          "description": "Trigger touch state"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Switch Device Profile
+```bash
+PUT http://localhost:8765/v1/profile
+Content-Type: application/json
+
+{
+  "device": "htc_vive"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "device": "HTC Vive (Simulated)",
+  "interaction_profile": "/interaction_profiles/htc/vive_controller"
+}
+```
+
+**Available devices:**
+- `oculus_quest_2` - Meta Quest 2
+- `oculus_quest_3` - Meta Quest 3
+- `htc_vive` - HTC Vive
+- `valve_index` - Valve Index
+- `htc_vive_tracker` - HTC Vive Trackers (no HMD)
+
 #### List Devices
 ```bash
 GET http://localhost:8765/v1/devices
@@ -74,8 +141,7 @@ GET http://localhost:8765/v1/devices
   "paths": [
     "/user/head",
     "/user/hand/left",
-    "/user/hand/right",
-    "/user/vive_tracker/waist"
+    "/user/hand/right"
   ]
 }
 ```
@@ -88,8 +154,7 @@ GET http://localhost:8765/v1/devices/user/hand/left
 **Response:**
 ```json
 {
-  "user_path": "/user/hand/left",
-  "is_active": true,
+  "active": true,
   "position": {"x": -0.2, "y": 1.4, "z": -0.3},
   "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 }
@@ -102,7 +167,7 @@ Content-Type: application/json
 
 {
   "position": {"x": -0.2, "y": 1.4, "z": -0.3},
-  "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+  "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
   "active": true
 }
 ```
@@ -113,6 +178,8 @@ Content-Type: application/json
 - `active`: Boolean indicating if device is active (optional, default: true)
 
 #### Get Input State
+Look at the output of `GET /v1/profile` to find the possible input path values.
+
 ```bash
 GET http://localhost:8765/v1/states/user/hand/left/input/trigger/value
 ```
@@ -120,7 +187,6 @@ GET http://localhost:8765/v1/states/user/hand/left/input/trigger/value
 **Response:**
 ```json
 {
-  "binding_path": "/user/hand/left/input/trigger/value",
   "boolean_value": false,
   "float_value": 0.8,
   "x": 0.0,
@@ -141,22 +207,24 @@ Content-Type: application/json
 **Parameters:**
 - `value`: Numeric value (0.0 to 1.0) or boolean
 
-**Common Input Components:**
-- `/input/trigger/value` - Trigger analog value (0.0 - 1.0)
-- `/input/trigger/click` - Trigger button click (boolean)
-- `/input/squeeze/value` - Grip squeeze analog value (0.0 - 1.0)
-- `/input/squeeze/click` - Grip button click (boolean)
-- `/input/thumbstick/x` - Thumbstick X axis (-1.0 to 1.0)
-- `/input/thumbstick/y` - Thumbstick Y axis (-1.0 to 1.0)
-- `/input/thumbstick/click` - Thumbstick button click (boolean)
-- `/input/a/click` - A button click (boolean)
-- `/input/b/click` - B button click (boolean)
-- `/input/x/click` - X button click (boolean)
-- `/input/y/click` - Y button click (boolean)
-
 ## API Usage Examples
 
 ### Using cURL
+
+**Get current device profile:**
+```bash
+curl http://localhost:8765/v1/profile
+```
+
+**Switch to HTC Vive:**
+```bash
+curl -X PUT http://localhost:8765/v1/profile -H "Content-Type: application/json" -d '{"device": "htc_vive"}'
+```
+
+**Switch to Vive trackers:**
+```bash
+curl -X PUT http://localhost:8765/v1/profile -H "Content-Type: application/json" -d '{"device": "htc_vive_tracker"}'
+```
 
 **List all devices:**
 ```bash
@@ -191,7 +259,7 @@ curl -X PUT http://localhost:8765/v1/states/user/hand/left/input/trigger/value -
 
 **Position a Vive tracker on waist:**
 ```bash
-curl -X PUT http://localhost:8765/v1/devices/user/vive_tracker/waist -H "Content-Type: application/json" -d '{
+curl -X PUT http://localhost:8765/v1/devices/user/vive_tracker_htcx/role/waist -H "Content-Type: application/json" -d '{
   "position": {"x": 0, "y": 1.0, "z": 0},
   "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
   "active": true
@@ -205,6 +273,27 @@ import requests
 import json
 
 BASE_URL = "http://localhost:8765"
+
+# Get current device profile
+response = requests.get(f"{BASE_URL}/v1/profile")
+if response.status_code == 200:
+    profile = response.json()
+    print(f"Current device: {profile['type']}")
+    print(f"Interaction profile: {profile['interaction_profile']}")
+
+# Switch to HTC Vive
+switch_request = {"device": "htc_vive"}
+response = requests.put(f"{BASE_URL}/v1/profile", json=switch_request)
+if response.status_code == 200:
+    result = response.json()
+    print(f"Switched to: {result['device']}")
+
+# Switch to Vive trackers
+switch_request = {"device": "htc_vive_tracker"}
+response = requests.put(f"{BASE_URL}/v1/profile", json=switch_request)
+if response.status_code == 200:
+    result = response.json()
+    print(f"Switched to: {result['device']}")
 
 # List all devices
 response = requests.get(f"{BASE_URL}/v1/devices")
@@ -249,7 +338,7 @@ tracker_pose = {
     "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
     "active": True
 }
-response = requests.put(f"{BASE_URL}/v1/devices/user/vive_tracker/waist", json=tracker_pose)
+response = requests.put(f"{BASE_URL}/v1/devices/user/vive_tracker_htcx/role/waist", json=tracker_pose)
 print(f"Set waist tracker: {response.status_code}")
 ```
 
@@ -279,3 +368,9 @@ After deploying and configuring the simulator, you can test it with OpenXR appli
 - Confirm `mode` is set to `"api"` in `config.json`
 - Check `ox-service` console output for startup messages
 - Test the root endpoint: `curl http://localhost:8765/`
+
+**Device switching not working:**
+- Ensure the device name is spelled correctly (case-sensitive)
+- Check that the device profile exists by calling `GET /v1/profile` first
+- Restart ox-service if device switching fails
+- Some input components may not be available on certain devices (e.g., A/B buttons on Vive controllers)

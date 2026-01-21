@@ -234,7 +234,7 @@ static const DeviceProfile INDEX_PROFILE = {
 
 // Vive Tracker profile (can have multiple trackers)
 static const DeviceProfile VIVE_TRACKER_PROFILE = {
-    DeviceType::VIVE_TRACKER,
+    DeviceType::HTC_VIVE_TRACKER,
 
     "HTC Vive Tracker (Simulated)",
     "HTC Corporation",
@@ -279,7 +279,7 @@ static const std::map<std::string, DeviceType> NAME_TO_TYPE = {
     {"oculus_quest_3", DeviceType::OCULUS_QUEST_3},
     {"htc_vive", DeviceType::HTC_VIVE},
     {"valve_index", DeviceType::VALVE_INDEX},
-    {"vive_tracker", DeviceType::VIVE_TRACKER},
+    {"htc_vive_tracker", DeviceType::HTC_VIVE_TRACKER},
 };
 
 const DeviceProfile& GetDeviceProfile(DeviceType type) {
@@ -292,7 +292,7 @@ const DeviceProfile& GetDeviceProfile(DeviceType type) {
             return VIVE_PROFILE;
         case DeviceType::VALVE_INDEX:
             return INDEX_PROFILE;
-        case DeviceType::VIVE_TRACKER:
+        case DeviceType::HTC_VIVE_TRACKER:
             return VIVE_TRACKER_PROFILE;
         default:
             throw std::runtime_error("Unknown device type");

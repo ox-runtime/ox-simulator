@@ -13,7 +13,7 @@ enum class DeviceType {
     OCULUS_QUEST_3,
     HTC_VIVE,
     VALVE_INDEX,
-    VIVE_TRACKER,
+    HTC_VIVE_TRACKER,
     // Add more device types here in the future
 };
 
