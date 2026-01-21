@@ -9,7 +9,8 @@
 
 namespace ox_sim {
 
-HttpServer::HttpServer() : simulator_(nullptr), device_profile_ptr_(nullptr), port_(8765), running_(false), should_stop_(false) {}
+HttpServer::HttpServer()
+    : simulator_(nullptr), device_profile_ptr_(nullptr), port_(8765), running_(false), should_stop_(false) {}
 
 HttpServer::~HttpServer() { Stop(); }
 
@@ -139,7 +140,7 @@ void HttpServer::ServerThread() {
             return crow::response(200, "OK");
         });
 
-    CROW_ROUTE(app, "/v1/states/<path>").methods("GET"_method)([this](const std::string& binding_path) {
+    CROW_ROUTE(app, "/v1/inputs/<path>").methods("GET"_method)([this](const std::string& binding_path) {
         // prepend '/' to binding_path since it'll be missing
         std::string full_binding_path = "/" + binding_path;
 
@@ -165,7 +166,7 @@ void HttpServer::ServerThread() {
         return crow::response(response);
     });
 
-    CROW_ROUTE(app, "/v1/states/<path>")
+    CROW_ROUTE(app, "/v1/inputs/<path>")
         .methods("PUT"_method)([this](const crow::request& req, const std::string& binding_path) {
             auto json = crow::json::load(req.body);
             if (!json) {
@@ -223,8 +224,9 @@ void HttpServer::ServerThread() {
                 const auto& comp = dev.components[j];
                 crow::json::wvalue comp_obj;
                 comp_obj["path"] = comp.path;
-                comp_obj["type"] = (comp.type == ComponentType::FLOAT ? "float" :
-                                   comp.type == ComponentType::BOOLEAN ? "boolean" : "vec2");
+                comp_obj["type"] = (comp.type == ComponentType::FLOAT     ? "float"
+                                    : comp.type == ComponentType::BOOLEAN ? "boolean"
+                                                                          : "vec2");
                 comp_obj["description"] = comp.description;
                 components_array[j] = std::move(comp_obj);
             }
@@ -238,37 +240,36 @@ void HttpServer::ServerThread() {
     });
 
     // Switch device profile
-    CROW_ROUTE(app, "/v1/profile")
-        .methods("PUT"_method)([this](const crow::request& req) {
-            auto json = crow::json::load(req.body);
-            if (!json) {
-                return crow::response(400, "Invalid JSON");
-            }
+    CROW_ROUTE(app, "/v1/profile").methods("PUT"_method)([this](const crow::request& req) {
+        auto json = crow::json::load(req.body);
+        if (!json) {
+            return crow::response(400, "Invalid JSON");
+        }
 
-            if (!json.has("device") || json["device"].t() != crow::json::type::String) {
-                return crow::response(400, "Missing required field: device (string)");
-            }
+        if (!json.has("device") || json["device"].t() != crow::json::type::String) {
+            return crow::response(400, "Missing required field: device (string)");
+        }
 
-            std::string device_name = json["device"].s();
-            const DeviceProfile* new_profile = GetDeviceProfileByName(device_name);
-            if (!new_profile) {
-                return crow::response(404, "Unknown device: " + device_name);
-            }
+        std::string device_name = json["device"].s();
+        const DeviceProfile* new_profile = GetDeviceProfileByName(device_name);
+        if (!new_profile) {
+            return crow::response(404, "Unknown device: " + device_name);
+        }
 
-            // Switch the device
-            if (!simulator_->SwitchDevice(new_profile)) {
-                return crow::response(500, "Failed to switch device");
-            }
+        // Switch the device
+        if (!simulator_->SwitchDevice(new_profile)) {
+            return crow::response(500, "Failed to switch device");
+        }
 
-            // Update the global pointer
-            *device_profile_ptr_ = new_profile;
+        // Update the global pointer
+        *device_profile_ptr_ = new_profile;
 
-            crow::json::wvalue response;
-            response["status"] = "ok";
-            response["device"] = new_profile->name;
-            response["interaction_profile"] = new_profile->interaction_profile;
-            return crow::response(response);
-        });
+        crow::json::wvalue response;
+        response["status"] = "ok";
+        response["device"] = new_profile->name;
+        response["interaction_profile"] = new_profile->interaction_profile;
+        return crow::response(response);
+    });
 
     CROW_ROUTE(app, "/")
     ([]() {
@@ -278,8 +279,8 @@ void HttpServer::ServerThread() {
                "  GET  /v1/devices              - List all devices\n"
                "  GET  /v1/devices/<user_path>  - Get device pose\n"
                "  PUT  /v1/devices/<user_path>  - Set device pose\n"
-               "  GET  /v1/states/<binding_path>  - Get input component state\n"
-               "  PUT  /v1/states/<binding_path>  - Set input component state\n";
+               "  GET  /v1/inputs/<binding_path>  - Get input component state\n"
+               "  PUT  /v1/inputs/<binding_path>  - Set input component state\n";
     });
 
     std::cout << "Starting HTTP server on port " << port_ << "..." << std::endl;

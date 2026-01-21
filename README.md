@@ -177,11 +177,11 @@ Content-Type: application/json
 - `orientation`: Object with x, y, z, w quaternion components
 - `active`: Boolean indicating if device is active (optional, default: true)
 
-#### Get Input State
+#### Get Input Component State
 Look at the output of `GET /v1/profile` to find the possible input path values.
 
 ```bash
-GET http://localhost:8765/v1/states/user/hand/left/input/trigger/value
+GET http://localhost:8765/v1/inputs/user/hand/left/input/trigger/value
 ```
 
 **Response:**
@@ -194,9 +194,9 @@ GET http://localhost:8765/v1/states/user/hand/left/input/trigger/value
 }
 ```
 
-#### Set Input State
+#### Set Input Component State
 ```bash
-PUT http://localhost:8765/v1/states/user/hand/left/input/trigger/value
+PUT http://localhost:8765/v1/inputs/user/hand/left/input/trigger/value
 Content-Type: application/json
 
 {
@@ -247,12 +247,12 @@ curl -X PUT http://localhost:8765/v1/devices/user/hand/left -H "Content-Type: ap
 
 **Get trigger value:**
 ```bash
-curl http://localhost:8765/v1/states/user/hand/left/input/trigger/value
+curl http://localhost:8765/v1/inputs/user/hand/left/input/trigger/value
 ```
 
 **Press the left trigger:**
 ```bash
-curl -X PUT http://localhost:8765/v1/states/user/hand/left/input/trigger/value -H "Content-Type: application/json" -d '{
+curl -X PUT http://localhost:8765/v1/inputs/user/hand/left/input/trigger/value -H "Content-Type: application/json" -d '{
   "value": 1.0
 }'
 ```
@@ -317,19 +317,19 @@ response = requests.put(f"{BASE_URL}/v1/devices/user/hand/left", json=left_contr
 print(f"Set left controller: {response.status_code}")
 
 # Get current trigger value
-response = requests.get(f"{BASE_URL}/v1/states/user/hand/left/input/trigger/value")
+response = requests.get(f"{BASE_URL}/v1/inputs/user/hand/left/input/trigger/value")
 if response.status_code == 200:
     trigger_state = response.json()
     print(f"Trigger value: {trigger_state['float_value']}")
 
 # Press trigger on left controller
 trigger_input = {"value": 0.8}
-response = requests.put(f"{BASE_URL}/v1/states/user/hand/left/input/trigger/value", json=trigger_input)
+response = requests.put(f"{BASE_URL}/v1/inputs/user/hand/left/input/trigger/value", json=trigger_input)
 print(f"Set trigger: {response.status_code}")
 
 # Press A button
 button_input = {"value": True}
-response = requests.put(f"{BASE_URL}/v1/states/user/hand/left/input/a/click", json=button_input)
+response = requests.put(f"{BASE_URL}/v1/inputs/user/hand/left/input/a/click", json=button_input)
 print(f"Press A button: {response.status_code}")
 
 # Add Vive tracker on waist
