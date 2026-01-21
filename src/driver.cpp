@@ -25,7 +25,7 @@ static GuiWindow g_gui_window;
 SimulatorConfig g_config;
 const ox_sim::DeviceProfile* g_device_profile = nullptr;
 
-static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v);  // Helper
+static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v);
 
 // ===== Driver Callbacks =====
 
@@ -222,7 +222,7 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     return 1;
 }
 
-// Implementation: rotate a vector `v` by quaternion `q` (assumes q is a unit quaternion).
+// Rotate a vector `v` by quaternion `q` (assumes q is a unit quaternion).
 static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v) {
     // t = 2 * cross(q.xyz, v)
     OxVector3f t;
