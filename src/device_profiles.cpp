@@ -121,9 +121,9 @@ static const DeviceProfile QUEST_2_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}}, // HMD - always active, no input components
-        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
+        {"/user/head", "hmd", true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}}, // HMD - always active, no input components
+        {"/user/hand/left", "left_controller", false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
+        {"/user/hand/right", "right_controller", false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
     },
 };
 
@@ -157,9 +157,9 @@ static const DeviceProfile QUEST_3_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
-        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
+        {"/user/head", "hmd", true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
+        {"/user/hand/left", "left_controller", false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
+        {"/user/hand/right", "right_controller", false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, OCULUS_TOUCH_COMPONENTS},
     },
 };
 
@@ -192,9 +192,9 @@ static const DeviceProfile VIVE_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
-        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_CONTROLLER_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_CONTROLLER_COMPONENTS},
+        {"/user/head", "hmd", true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
+        {"/user/hand/left", "left_controller", false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_CONTROLLER_COMPONENTS},
+        {"/user/hand/right", "right_controller", false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_CONTROLLER_COMPONENTS},
     },
 };
 
@@ -227,9 +227,9 @@ static const DeviceProfile INDEX_PROFILE = {
 
     // Devices
     {
-        {"/user/head", "hmd", true, true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
-        {"/user/hand/left", "left_controller", true, false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, INDEX_CONTROLLER_COMPONENTS},
-        {"/user/hand/right", "right_controller", true, false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, INDEX_CONTROLLER_COMPONENTS},
+        {"/user/head", "hmd", true, {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, {}},
+        {"/user/hand/left", "left_controller", false, {{-0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, INDEX_CONTROLLER_COMPONENTS},
+        {"/user/hand/right", "right_controller", false, {{0.2f, 1.4f, -0.3f}, {0.0f, 0.0f, 0.0f, 1.0f}}, INDEX_CONTROLLER_COMPONENTS},
     },
 };
 
@@ -264,11 +264,11 @@ static const DeviceProfile VIVE_TRACKER_PROFILE = {
     // Devices - Trackers only (no HMD)
     {
         // Trackers with common roles - set to active by default
-        {"/user/vive_tracker_htcx/role/waist", "waist_tracker", true, true, {{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/left_foot", "left_foot_tracker", true, true, {{-0.15f, 0.1f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/right_foot", "right_foot_tracker", true, true, {{0.15f, 0.1f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/left_shoulder", "left_shoulder_tracker", true, true, {{-0.2f, 1.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
-        {"/user/vive_tracker_htcx/role/right_shoulder", "right_shoulder_tracker", true, true, {{0.2f, 1.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/waist", "waist_tracker", true, {{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/left_foot", "left_foot_tracker", true, {{-0.15f, 0.1f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/right_foot", "right_foot_tracker", true, {{0.15f, 0.1f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/left_shoulder", "left_shoulder_tracker", true, {{-0.2f, 1.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
+        {"/user/vive_tracker_htcx/role/right_shoulder", "right_shoulder_tracker", true, {{0.2f, 1.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, VIVE_TRACKER_COMPONENTS},
     },
 };
 
