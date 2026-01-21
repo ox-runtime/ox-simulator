@@ -78,14 +78,12 @@ GET http://localhost:8765/v1/profile
     {
       "user_path": "/user/head",
       "role": "hmd",
-      "is_tracked": true,
       "always_active": true,
       "components": []
     },
     {
       "user_path": "/user/hand/left",
       "role": "left_controller",
-      "is_tracked": true,
       "always_active": false,
       "components": [
         {
