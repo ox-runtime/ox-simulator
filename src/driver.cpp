@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#include "config.h"
+#include "config.hpp"
 #include "device_profiles.h"
 #include "gui_window.h"
 #include "http_server.h"
@@ -22,6 +22,7 @@ using namespace ox_sim;
 static SimulatorCore g_simulator;
 static HttpServer g_http_server;
 static GuiWindow g_gui_window;
+SimulatorConfig g_config;
 const ox_sim::DeviceProfile* g_device_profile = nullptr;
 
 // ===== Driver Callbacks =====

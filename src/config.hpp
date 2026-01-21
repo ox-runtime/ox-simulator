@@ -1,8 +1,10 @@
-#include "config.h"
+#pragma once
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #include "crow/json.h"
 
@@ -12,11 +14,18 @@
 #include <dlfcn.h>
 #endif
 
-// Global simulator state definition
-SimulatorConfig g_config;
+// Configuration structure
+struct SimulatorConfig {
+    std::string device = "oculus_quest_2";
+    std::string mode = "api";
+    int api_port = 8765;
+};
+
+// Global simulator state (defined in driver.cpp)
+extern SimulatorConfig g_config;
 
 // Helper function to read config file
-bool LoadConfig(const std::string& config_path) {
+inline bool LoadConfig(const std::string& config_path) {
     std::ifstream file(config_path);
     if (!file.is_open()) {
         std::cout << "Config file not found at: " << config_path << std::endl;
@@ -68,7 +77,7 @@ bool LoadConfig(const std::string& config_path) {
 }
 
 // Helper to get module directory path
-std::filesystem::path get_module_path() {
+inline std::filesystem::path get_module_path() {
 #ifdef _WIN32
     HMODULE module = nullptr;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -85,4 +94,4 @@ std::filesystem::path get_module_path() {
 }
 
 // Get the config file path (same directory as driver)
-std::string GetConfigPath() { return (get_module_path() / "config.json").string(); }
+inline std::string GetConfigPath() { return (get_module_path() / "config.json").string(); }
