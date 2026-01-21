@@ -91,7 +91,6 @@ void HttpServer::ServerThread() {
         for (uint32_t i = 0; i < device_count; ++i) {
             if (std::strcmp(devices[i].user_path, full_user_path.c_str()) == 0) {
                 crow::json::wvalue response;
-                response["user_path"] = devices[i].user_path;
                 response["active"] = devices[i].is_active;
                 response["position"]["x"] = devices[i].pose.position.x;
                 response["position"]["y"] = devices[i].pose.position.y;
