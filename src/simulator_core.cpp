@@ -10,6 +10,45 @@ SimulatorCore::SimulatorCore() : profile_(nullptr), state_{} { state_.device_cou
 
 SimulatorCore::~SimulatorCore() { Shutdown(); }
 
+// Helper to find device index in state by user path
+int SimulatorCore::FindDeviceIndexByUserPath(const char* user_path) const {
+    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
+        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Helper to find device definition in profile by user path
+const DeviceDef* SimulatorCore::FindDeviceDefByUserPath(const char* user_path) const {
+    if (!profile_) {
+        return nullptr;
+    }
+
+    for (const auto& dev : profile_->devices) {
+        if (std::strcmp(dev.user_path, user_path) == 0) {
+            return &dev;
+        }
+    }
+    return nullptr;
+}
+
+// Helper to find component information in device definition
+std::pair<bool, ComponentType> SimulatorCore::FindComponentInfo(const DeviceDef* device_def,
+                                                                const char* component_path) const {
+    if (!device_def) {
+        return {false, ComponentType::FLOAT};
+    }
+
+    for (const auto& comp : device_def->components) {
+        if (std::strcmp(comp.path, component_path) == 0) {
+            return {true, comp.type};
+        }
+    }
+    return {false, ComponentType::FLOAT};
+}
+
 bool SimulatorCore::Initialize(const DeviceProfile* profile) {
     if (!profile) {
         return false;
@@ -82,46 +121,14 @@ OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, c
     std::lock_guard<std::mutex> lock(state_mutex_);
 
     // Find the device by user path
-    int device_index = -1;
-    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
-        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
-            device_index = i;
-            break;
-        }
-    }
-
-    if (device_index < 0) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    // Validate that this component exists for this device in the profile
-    if (!profile_) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    const DeviceDef* device_def = nullptr;
-    for (const auto& dev : profile_->devices) {
-        if (std::strcmp(dev.user_path, user_path) == 0) {
-            device_def = &dev;
-            break;
-        }
-    }
-
-    if (!device_def) {
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
+    if (device_index < 0 || !device_def) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
     // Check if component exists in device definition
-    bool component_exists = false;
-    ComponentType comp_type = ComponentType::FLOAT;
-    for (const auto& comp : device_def->components) {
-        if (std::strcmp(comp.path, component_path) == 0) {
-            component_exists = true;
-            comp_type = comp.type;
-            break;
-        }
-    }
-
+    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
     if (!component_exists) {
         return OX_COMPONENT_UNAVAILABLE;
     }
@@ -163,61 +170,30 @@ OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, c
 void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, bool is_active) {
     std::lock_guard<std::mutex> lock(state_mutex_);
 
-    // Find the device by user path (now includes /user/head at device[0])
-    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
-        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
-            state_.devices[i].pose = pose;
-            // HMD (/user/head) is always active
-            state_.devices[i].is_active = (std::strcmp(user_path, "/user/head") == 0) ? 1 : (is_active ? 1 : 0);
-            return;
-        }
+    // Find the device by user path
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
+    if (device_index < 0) {
+        return;
     }
+
+    state_.devices[device_index].pose = pose;
+    bool device_always_active = device_def ? device_def->always_active : false;
+    state_.devices[device_index].is_active = device_always_active ? 1 : (is_active ? 1 : 0);
 }
 
 void SimulatorCore::SetInputComponent(const char* user_path, const char* component_path, float value) {
     std::lock_guard<std::mutex> lock(state_mutex_);
 
     // Find the device by user path
-    int device_index = -1;
-    for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
-        if (std::strcmp(state_.devices[i].user_path, user_path) == 0) {
-            device_index = i;
-            break;
-        }
-    }
-
-    if (device_index < 0) {
-        return;
-    }
-
-    // Validate that this component exists for this device in the profile
-    if (!profile_) {
-        return;
-    }
-
-    const DeviceDef* device_def = nullptr;
-    for (const auto& dev : profile_->devices) {
-        if (std::strcmp(dev.user_path, user_path) == 0) {
-            device_def = &dev;
-            break;
-        }
-    }
-
-    if (!device_def) {
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
+    if (device_index < 0 || !device_def) {
         return;
     }
 
     // Check if component exists in device definition
-    bool component_exists = false;
-    ComponentType comp_type = ComponentType::FLOAT;
-    for (const auto& comp : device_def->components) {
-        if (std::strcmp(comp.path, component_path) == 0) {
-            component_exists = true;
-            comp_type = comp.type;
-            break;
-        }
-    }
-
+    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
     if (!component_exists) {
         return;
     }

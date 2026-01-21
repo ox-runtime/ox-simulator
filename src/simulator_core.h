@@ -60,6 +60,11 @@ class SimulatorCore {
     void SetInputComponent(const char* user_path, const char* component_path, float value);
 
    private:
+    // Helper functions
+    int FindDeviceIndexByUserPath(const char* user_path) const;
+    const DeviceDef* FindDeviceDefByUserPath(const char* user_path) const;
+    std::pair<bool, ComponentType> FindComponentInfo(const DeviceDef* device_def, const char* component_path) const;
+
     const DeviceProfile* profile_;
     DeviceState state_;
     mutable std::mutex state_mutex_;
