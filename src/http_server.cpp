@@ -215,7 +215,6 @@ void HttpServer::ServerThread() {
             crow::json::wvalue dev_obj;
             dev_obj["user_path"] = dev.user_path;
             dev_obj["role"] = dev.role;
-            dev_obj["is_tracked"] = dev.is_tracked;
             dev_obj["always_active"] = dev.always_active;
 
             // List components

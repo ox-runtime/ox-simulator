@@ -35,7 +35,6 @@ struct ComponentDef {
 struct DeviceDef {
     const char* user_path;                 // e.g., "/user/head", "/user/hand/left"
     const char* role;                      // e.g., "hmd", "left_controller", "right_controller"
-    bool is_tracked;                       // Whether this device has pose tracking
     bool always_active;                    // Whether device is always active (e.g., HMD)
     OxPose default_pose;                   // Default pose for this device
     std::vector<ComponentDef> components;  // Input components for this device
