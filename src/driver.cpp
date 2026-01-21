@@ -25,6 +25,8 @@ static GuiWindow g_gui_window;
 SimulatorConfig g_config;
 const ox_sim::DeviceProfile* g_device_profile = nullptr;
 
+static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v);  // Helper
+
 // ===== Driver Callbacks =====
 
 static int simulator_initialize(void) {
@@ -161,8 +163,14 @@ static void simulator_update_view_pose(int64_t predicted_time, uint32_t eye_inde
     float ipd = 0.063f;
     float eye_offset = (eye_index == 0) ? -ipd / 2.0f : ipd / 2.0f;
 
+    // Apply the IPD offset in head-local space by rotating the local X offset
+    OxVector3f eye_local = {eye_offset, 0.0f, 0.0f};
+    OxVector3f rotated_offset = rotate_vector_by_quat(hmd_pose.orientation, eye_local);
+
     *out_pose = hmd_pose;
-    out_pose->position.x += eye_offset;
+    out_pose->position.x += rotated_offset.x;
+    out_pose->position.y += rotated_offset.y;
+    out_pose->position.z += rotated_offset.z;
 }
 
 static void simulator_update_devices(int64_t predicted_time, OxDeviceState* out_states, uint32_t* out_count) {
@@ -212,4 +220,26 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     callbacks->get_interaction_profiles = simulator_get_interaction_profiles;
 
     return 1;
+}
+
+// Implementation: rotate a vector `v` by quaternion `q` (assumes q is a unit quaternion).
+static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v) {
+    // t = 2 * cross(q.xyz, v)
+    OxVector3f t;
+    t.x = 2.0f * (q.y * v.z - q.z * v.y);
+    t.y = 2.0f * (q.z * v.x - q.x * v.z);
+    t.z = 2.0f * (q.x * v.y - q.y * v.x);
+
+    // result = v + q.w * t + cross(q.xyz, t)
+    OxVector3f cross_q_t;
+    cross_q_t.x = q.y * t.z - q.z * t.y;
+    cross_q_t.y = q.z * t.x - q.x * t.z;
+    cross_q_t.z = q.x * t.y - q.y * t.x;
+
+    OxVector3f res;
+    res.x = v.x + q.w * t.x + cross_q_t.x;
+    res.y = v.y + q.w * t.y + cross_q_t.y;
+    res.z = v.z + q.w * t.z + cross_q_t.z;
+
+    return res;
 }
