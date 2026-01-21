@@ -3,6 +3,7 @@
 #include <ox_driver.h>
 
 #include <string>
+#include <vector>
 
 namespace ox_sim {
 
@@ -14,6 +15,29 @@ enum class DeviceType {
     VALVE_INDEX,
     VIVE_TRACKER,
     // Add more device types here in the future
+};
+
+// Input component type
+enum class ComponentType {
+    FLOAT,    // Analog values: triggers, grips (0.0 to 1.0)
+    BOOLEAN,  // Digital values: clicks, touches (0 or 1)
+    VEC2      // 2D vectors: thumbsticks, trackpads (-1.0 to 1.0)
+};
+
+// Component definition for a device
+struct ComponentDef {
+    const char* path;  // e.g., "/input/trigger/value"
+    ComponentType type;
+    const char* description;  // Human-readable description
+};
+
+// Device definition (HMD, controller, tracker, etc.)
+struct DeviceDef {
+    const char* user_path;                 // e.g., "/user/head", "/user/hand/left"
+    const char* role;                      // e.g., "hmd", "left_controller", "right_controller"
+    bool is_tracked;                       // Whether this device has pose tracking
+    bool always_active;                    // Whether device is always active (e.g., HMD)
+    std::vector<ComponentDef> components;  // Input components for this device
 };
 
 // Device profile containing all static properties
@@ -44,9 +68,11 @@ struct DeviceProfile {
     bool has_position_tracking;
     bool has_orientation_tracking;
 
-    // Controller support
-    bool has_controllers;
+    // Interaction profile
     const char* interaction_profile;  // e.g., "/interaction_profiles/oculus/touch_controller"
+
+    // Devices that make up this system (HMD, controllers, trackers, etc.)
+    std::vector<DeviceDef> devices;
 };
 
 // Get device profile by type
@@ -54,5 +80,8 @@ const DeviceProfile& GetDeviceProfile(DeviceType type);
 
 // Get device profile by name (for config file)
 const DeviceProfile* GetDeviceProfileByName(const std::string& name);
+
+// Get device type by name
+DeviceType GetDeviceTypeByName(const std::string& name);
 
 }  // namespace ox_sim

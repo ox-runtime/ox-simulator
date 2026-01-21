@@ -146,7 +146,7 @@ static int simulator_initialize(void) {
     // Start interface based on mode
     if (g_config.mode == "api") {
         std::cout << "Starting HTTP API server on port " << g_config.api_port << "..." << std::endl;
-        if (!g_http_server.Start(&g_simulator, g_config.api_port)) {
+        if (!g_http_server.Start(&g_simulator, &g_device_profile, g_config.api_port)) {
             std::cerr << "Failed to start HTTP server" << std::endl;
             return 0;
         }
@@ -234,12 +234,22 @@ static void simulator_get_tracking_capabilities(OxTrackingCapabilities* caps) {
     caps->has_orientation_tracking = g_device_profile->has_orientation_tracking ? 1 : 0;
 }
 
-static void simulator_update_pose(int64_t predicted_time, OxPose* out_pose) { g_simulator.GetHMDPose(out_pose); }
-
 static void simulator_update_view_pose(int64_t predicted_time, uint32_t eye_index, OxPose* out_pose) {
-    // Get base HMD pose
-    OxPose hmd_pose;
-    g_simulator.GetHMDPose(&hmd_pose);
+    // Get HMD pose from device list (HMD is at /user/head)
+    OxDeviceState devices[OX_MAX_DEVICES];
+    uint32_t device_count;
+    g_simulator.GetAllDevices(devices, &device_count);
+
+    // Find HMD device
+    OxPose hmd_pose = {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};  // Default origin at eye level
+    for (uint32_t i = 0; i < device_count; i++) {
+        if (std::strcmp(devices[i].user_path, "/user/head") == 0) {
+            hmd_pose = devices[i].pose;
+            break;
+        }
+    }
+    // If no HMD found (e.g., vive tracker profile), just use origin
+    // Most tracker applications don't render, so view pose doesn't matter
 
     // Apply IPD offset (typical IPD is ~63mm = 0.063m)
     float ipd = 0.063f;
@@ -250,7 +260,7 @@ static void simulator_update_view_pose(int64_t predicted_time, uint32_t eye_inde
 }
 
 static void simulator_update_devices(int64_t predicted_time, OxDeviceState* out_states, uint32_t* out_count) {
-    if (!g_device_profile || !g_device_profile->has_controllers) {
+    if (!g_device_profile) {
         *out_count = 0;
         return;
     }
@@ -261,7 +271,7 @@ static void simulator_update_devices(int64_t predicted_time, OxDeviceState* out_
 static OxComponentResult simulator_get_input_component_state(int64_t predicted_time, const char* user_path,
                                                              const char* component_path,
                                                              OxInputComponentState* out_state) {
-    if (!g_device_profile || !g_device_profile->has_controllers) {
+    if (!g_device_profile) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
@@ -269,7 +279,7 @@ static OxComponentResult simulator_get_input_component_state(int64_t predicted_t
 }
 
 static uint32_t simulator_get_interaction_profiles(const char** out_profiles, uint32_t max_count) {
-    if (!g_device_profile || !g_device_profile->has_controllers || max_count == 0) {
+    if (!g_device_profile || max_count == 0) {
         return 0;
     }
 

@@ -6,39 +6,7 @@
 
 namespace ox_sim {
 
-// Component mapping structures
-struct ComponentMapping {
-    enum Type { FLOAT, BOOLEAN, VEC2 } type;
-    size_t offset;
-};
-
-static const std::unordered_map<std::string, ComponentMapping> g_component_map = {
-    {"/input/trigger/value", {ComponentMapping::FLOAT, offsetof(DeviceState::InputState, trigger_value)}},
-    {"/input/trigger/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, trigger_click)}},
-    {"/input/trigger/touch", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, trigger_touch)}},
-    {"/input/squeeze/value", {ComponentMapping::FLOAT, offsetof(DeviceState::InputState, grip_value)}},
-    {"/input/squeeze/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, grip_click)}},
-    {"/input/thumbstick/x", {ComponentMapping::FLOAT, offsetof(DeviceState::InputState, thumbstick_x)}},
-    {"/input/thumbstick/y", {ComponentMapping::FLOAT, offsetof(DeviceState::InputState, thumbstick_y)}},
-    {"/input/thumbstick/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, thumbstick_click)}},
-    {"/input/thumbstick/touch", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, thumbstick_touch)}},
-    {"/input/a/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_a_click)}},
-    {"/input/x/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_a_click)}},
-    {"/input/a/touch", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_a_touch)}},
-    {"/input/x/touch", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_a_touch)}},
-    {"/input/b/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_b_click)}},
-    {"/input/y/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_b_click)}},
-    {"/input/b/touch", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_b_touch)}},
-    {"/input/y/touch", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, button_b_touch)}},
-    {"/input/menu/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, menu_click)}},
-    {"/input/system/click", {ComponentMapping::BOOLEAN, offsetof(DeviceState::InputState, menu_click)}},
-};
-
-SimulatorCore::SimulatorCore() : profile_(nullptr), state_{} {
-    // Default: HMD connected, no devices initially
-    // Device[0] will be set up as /user/head during Initialize()
-    state_.device_count = 0;
-}
+SimulatorCore::SimulatorCore() : profile_(nullptr), state_{} { state_.device_count = 0; }
 
 SimulatorCore::~SimulatorCore() { Shutdown(); }
 
@@ -50,42 +18,86 @@ bool SimulatorCore::Initialize(const DeviceProfile* profile) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     profile_ = profile;
 
-    // Initialize devices: HMD + 2 hand controllers
-    state_.device_count = 3;
+    // Initialize devices from profile
+    state_.device_count = std::min(static_cast<size_t>(OX_MAX_DEVICES), profile->devices.size());
 
-    // HMD as device[0] - /user/head
-    std::strncpy(state_.devices[0].user_path, "/user/head", sizeof(state_.devices[0].user_path) - 1);
-    state_.devices[0].user_path[sizeof(state_.devices[0].user_path) - 1] = '\0';
-    state_.devices[0].is_active = 1;  // HMD is always active
-    state_.devices[0].pose.position = {0.0f, 1.6f, 0.0f};
-    state_.devices[0].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+    for (uint32_t i = 0; i < state_.device_count; i++) {
+        const DeviceDef& dev_def = profile->devices[i];
 
-    // Left hand controller as device[1]
-    std::strncpy(state_.devices[1].user_path, "/user/hand/left", sizeof(state_.devices[1].user_path) - 1);
-    state_.devices[1].user_path[sizeof(state_.devices[1].user_path) - 1] = '\0';
-    state_.devices[1].is_active = 0;
-    state_.devices[1].pose.position = {-0.2f, 1.4f, -0.3f};
-    state_.devices[1].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        // Set user path
+        std::strncpy(state_.devices[i].user_path, dev_def.user_path, sizeof(state_.devices[i].user_path) - 1);
+        state_.devices[i].user_path[sizeof(state_.devices[i].user_path) - 1] = '\\0';
 
-    // Right hand controller as device[2]
-    std::strncpy(state_.devices[2].user_path, "/user/hand/right", sizeof(state_.devices[2].user_path) - 1);
-    state_.devices[2].user_path[sizeof(state_.devices[2].user_path) - 1] = '\0';
-    state_.devices[2].is_active = 0;
-    state_.devices[2].pose.position = {0.2f, 1.4f, -0.3f};
-    state_.devices[2].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        // Set active state
+        state_.devices[i].is_active = dev_def.always_active ? 1 : 0;
+
+        // Set default poses based on role
+        if (std::strcmp(dev_def.role, "hmd") == 0) {
+            // HMD at eye level
+            state_.devices[i].pose.position = {0.0f, 1.6f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "left_controller") == 0) {
+            // Left hand
+            state_.devices[i].pose.position = {-0.2f, 1.4f, -0.3f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "right_controller") == 0) {
+            // Right hand
+            state_.devices[i].pose.position = {0.2f, 1.4f, -0.3f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "waist_tracker") == 0) {
+            state_.devices[i].pose.position = {0.0f, 1.0f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "left_foot_tracker") == 0) {
+            state_.devices[i].pose.position = {-0.15f, 0.1f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "right_foot_tracker") == 0) {
+            state_.devices[i].pose.position = {0.15f, 0.1f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "left_shoulder_tracker") == 0) {
+            state_.devices[i].pose.position = {-0.2f, 1.5f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else if (std::strcmp(dev_def.role, "right_shoulder_tracker") == 0) {
+            state_.devices[i].pose.position = {0.2f, 1.5f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else {
+            // Default position for other devices
+            state_.devices[i].pose.position = {0.0f, 1.0f, 0.0f};
+            state_.devices[i].pose.orientation = {0.0f, 0.0f, 0.0f, 1.0f};
+        }
+
+        // Initialize input state (all components to zero/false)
+        state_.device_inputs[i].float_values.clear();
+        state_.device_inputs[i].boolean_values.clear();
+        state_.device_inputs[i].vec2_values.clear();
+
+        // Pre-populate all components for this device
+        for (const auto& component : dev_def.components) {
+            switch (component.type) {
+                case ComponentType::FLOAT:
+                    state_.device_inputs[i].float_values[component.path] = 0.0f;
+                    break;
+                case ComponentType::BOOLEAN:
+                    state_.device_inputs[i].boolean_values[component.path] = false;
+                    break;
+                case ComponentType::VEC2:
+                    state_.device_inputs[i].vec2_values[component.path] = {0.0f, 0.0f};
+                    break;
+            }
+        }
+    }
 
     return true;
+}
+
+bool SimulatorCore::SwitchDevice(const DeviceProfile* profile) {
+    Shutdown();
+    return Initialize(profile);
 }
 
 void SimulatorCore::Shutdown() {
     std::lock_guard<std::mutex> lock(state_mutex_);
     profile_ = nullptr;
-}
-
-void SimulatorCore::GetHMDPose(OxPose* out_pose) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    // HMD is now device[0] with /user/head path
-    *out_pose = state_.devices[0].pose;
+    state_.device_count = 0;
 }
 
 void SimulatorCore::GetAllDevices(OxDeviceState* out_states, uint32_t* out_count) {
@@ -113,44 +125,70 @@ OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, c
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    const DeviceState::InputState& input = state_.device_inputs[device_index];
-
-    memset(out_state, 0, sizeof(OxInputComponentState));
-
-    // Special case for 2D thumbstick
-    if (std::strcmp(component_path, "/input/thumbstick") == 0) {
-        out_state->x = input.thumbstick_x;
-        out_state->y = input.thumbstick_y;
-        return OX_COMPONENT_AVAILABLE;
-    }
-
-    // Look up component in map
-    auto it = g_component_map.find(component_path);
-    if (it == g_component_map.end()) {
+    // Validate that this component exists for this device in the profile
+    if (!profile_) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    const ComponentMapping& mapping = it->second;
-    const char* base = reinterpret_cast<const char*>(&input);
+    const DeviceDef* device_def = nullptr;
+    for (const auto& dev : profile_->devices) {
+        if (std::strcmp(dev.user_path, user_path) == 0) {
+            device_def = &dev;
+            break;
+        }
+    }
 
-    if (mapping.type == ComponentMapping::FLOAT) {
-        float val = *reinterpret_cast<const float*>(base + mapping.offset);
-        out_state->float_value = val;
-        out_state->boolean_value = (val > 0.5f) ? 1 : 0;
-    } else if (mapping.type == ComponentMapping::BOOLEAN) {
-        bool val = *reinterpret_cast<const bool*>(base + mapping.offset);
-        out_state->boolean_value = val ? 1 : 0;
-        out_state->float_value = val ? 1.0f : 0.0f;
+    if (!device_def) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    // Check if component exists in device definition
+    bool component_exists = false;
+    ComponentType comp_type = ComponentType::FLOAT;
+    for (const auto& comp : device_def->components) {
+        if (std::strcmp(comp.path, component_path) == 0) {
+            component_exists = true;
+            comp_type = comp.type;
+            break;
+        }
+    }
+
+    if (!component_exists) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    const DeviceInputState& input = state_.device_inputs[device_index];
+    memset(out_state, 0, sizeof(OxInputComponentState));
+
+    // Retrieve value from dynamic storage
+    switch (comp_type) {
+        case ComponentType::FLOAT: {
+            auto it = input.float_values.find(component_path);
+            if (it != input.float_values.end()) {
+                out_state->float_value = it->second;
+                out_state->boolean_value = (it->second > 0.5f) ? 1 : 0;
+            }
+            break;
+        }
+        case ComponentType::BOOLEAN: {
+            auto it = input.boolean_values.find(component_path);
+            if (it != input.boolean_values.end()) {
+                out_state->boolean_value = it->second ? 1 : 0;
+                out_state->float_value = it->second ? 1.0f : 0.0f;
+            }
+            break;
+        }
+        case ComponentType::VEC2: {
+            auto it = input.vec2_values.find(component_path);
+            if (it != input.vec2_values.end()) {
+                out_state->x = it->second.x;
+                out_state->y = it->second.y;
+            }
+            break;
+        }
     }
 
     return OX_COMPONENT_AVAILABLE;
-}
-
-void SimulatorCore::SetHMDPose(const OxPose& pose) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    // HMD is now device[0] with /user/head path
-    state_.devices[0].pose = pose;
-    state_.devices[0].is_active = 1;  // HMD is always active
 }
 
 void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, bool is_active) {
@@ -183,21 +221,52 @@ void SimulatorCore::SetInputComponent(const char* user_path, const char* compone
         return;
     }
 
-    DeviceState::InputState& input = state_.device_inputs[device_index];
-
-    // Look up component in map
-    auto it = g_component_map.find(component_path);
-    if (it == g_component_map.end()) {
+    // Validate that this component exists for this device in the profile
+    if (!profile_) {
         return;
     }
 
-    const ComponentMapping& mapping = it->second;
-    char* base = reinterpret_cast<char*>(&input);
+    const DeviceDef* device_def = nullptr;
+    for (const auto& dev : profile_->devices) {
+        if (std::strcmp(dev.user_path, user_path) == 0) {
+            device_def = &dev;
+            break;
+        }
+    }
 
-    if (mapping.type == ComponentMapping::FLOAT) {
-        *reinterpret_cast<float*>(base + mapping.offset) = value;
-    } else if (mapping.type == ComponentMapping::BOOLEAN) {
-        *reinterpret_cast<bool*>(base + mapping.offset) = (value >= 0.5f);
+    if (!device_def) {
+        return;
+    }
+
+    // Check if component exists in device definition
+    bool component_exists = false;
+    ComponentType comp_type = ComponentType::FLOAT;
+    for (const auto& comp : device_def->components) {
+        if (std::strcmp(comp.path, component_path) == 0) {
+            component_exists = true;
+            comp_type = comp.type;
+            break;
+        }
+    }
+
+    if (!component_exists) {
+        return;
+    }
+
+    DeviceInputState& input = state_.device_inputs[device_index];
+
+    // Set value in dynamic storage
+    switch (comp_type) {
+        case ComponentType::FLOAT:
+            input.float_values[component_path] = value;
+            break;
+        case ComponentType::BOOLEAN:
+            input.boolean_values[component_path] = (value >= 0.5f);
+            break;
+        case ComponentType::VEC2:
+            // For VEC2, this sets just one axis - caller should use proper API
+            // For now, we'll just ignore single value sets for VEC2
+            break;
     }
 }
 

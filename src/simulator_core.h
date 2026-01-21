@@ -3,12 +3,26 @@
 #include <ox_driver.h>
 
 #include <atomic>
+#include <map>
 #include <mutex>
 #include <string>
 
 #include "device_profiles.h"
 
 namespace ox_sim {
+
+// 2D vector for input components (since OxDriver uses separate x/y fields)
+struct OxVector2f {
+    float x;
+    float y;
+};
+
+// Input state for a single device (dynamically sized based on components)
+struct DeviceInputState {
+    std::map<std::string, float> float_values;      // component_path -> value
+    std::map<std::string, bool> boolean_values;     // component_path -> value
+    std::map<std::string, OxVector2f> vec2_values;  // component_path -> {x, y}
+};
 
 // Shared device state (written by API/GUI, read by driver)
 struct DeviceState {
@@ -17,33 +31,8 @@ struct DeviceState {
     uint32_t device_count;
 
     // Input state per device (indexed same as devices array)
-    struct InputState {
-        // Trigger
-        float trigger_value;
-        bool trigger_click;
-        bool trigger_touch;
-
-        // Grip
-        float grip_value;
-        bool grip_click;
-
-        // Thumbstick
-        float thumbstick_x;
-        float thumbstick_y;
-        bool thumbstick_click;
-        bool thumbstick_touch;
-
-        // Buttons (A/B or X/Y depending on controller)
-        bool button_a_click;
-        bool button_a_touch;
-        bool button_b_click;
-        bool button_b_touch;
-
-        // Menu/System button
-        bool menu_click;
-    };
-
-    InputState device_inputs[OX_MAX_DEVICES];
+    // Using dynamic map instead of fixed struct
+    DeviceInputState device_inputs[OX_MAX_DEVICES];
 };
 
 class SimulatorCore {
@@ -58,14 +47,15 @@ class SimulatorCore {
     // Get current device profile
     const DeviceProfile* GetProfile() const { return profile_; }
 
+    // Switch to a different device profile (reinitializes devices)
+    bool SwitchDevice(const DeviceProfile* profile);
+
     // Device state access (thread-safe)
-    void GetHMDPose(OxPose* out_pose);
     void GetAllDevices(OxDeviceState* out_states, uint32_t* out_count);
     OxComponentResult GetInputComponentState(const char* user_path, const char* component_path,
                                              OxInputComponentState* out_state);
 
     // Update device state (called by API/GUI)
-    void SetHMDPose(const OxPose& pose);
     void SetDevicePose(const char* user_path, const OxPose& pose, bool is_active);
     void SetInputComponent(const char* user_path, const char* component_path, float value);
 

@@ -5,15 +5,16 @@
 #include <string>
 
 #include "crow/app.h"
+#include "device_profiles.h"
 
 namespace ox_sim {
 
-HttpServer::HttpServer() : simulator_(nullptr), port_(8765), running_(false), should_stop_(false) {}
+HttpServer::HttpServer() : simulator_(nullptr), device_profile_ptr_(nullptr), port_(8765), running_(false), should_stop_(false) {}
 
 HttpServer::~HttpServer() { Stop(); }
 
-bool HttpServer::Start(SimulatorCore* simulator, int port) {
-    if (!simulator) {
+bool HttpServer::Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, int port) {
+    if (!simulator || !device_profile_ptr) {
         return false;
     }
 
@@ -22,6 +23,7 @@ bool HttpServer::Start(SimulatorCore* simulator, int port) {
     }
 
     simulator_ = simulator;
+    device_profile_ptr_ = device_profile_ptr;
     port_ = port;
     should_stop_.store(false);
 
@@ -193,14 +195,91 @@ void HttpServer::ServerThread() {
             return crow::response(200, "OK");
         });
 
+    // Get current device profile
+    CROW_ROUTE(app, "/v1/profile").methods("GET"_method)([this]() {
+        const DeviceProfile* profile = *device_profile_ptr_;
+        if (!profile) {
+            return crow::response(500, "No device profile loaded");
+        }
+
+        crow::json::wvalue response;
+        response["type"] = profile->name;
+        response["manufacturer"] = profile->manufacturer;
+        response["interaction_profile"] = profile->interaction_profile;
+
+        // List devices
+        crow::json::wvalue devices_array(crow::json::type::List);
+        for (size_t i = 0; i < profile->devices.size(); ++i) {
+            const auto& dev = profile->devices[i];
+            crow::json::wvalue dev_obj;
+            dev_obj["user_path"] = dev.user_path;
+            dev_obj["role"] = dev.role;
+            dev_obj["is_tracked"] = dev.is_tracked;
+            dev_obj["always_active"] = dev.always_active;
+
+            // List components
+            crow::json::wvalue components_array(crow::json::type::List);
+            for (size_t j = 0; j < dev.components.size(); ++j) {
+                const auto& comp = dev.components[j];
+                crow::json::wvalue comp_obj;
+                comp_obj["path"] = comp.path;
+                comp_obj["type"] = (comp.type == ComponentType::FLOAT ? "float" :
+                                   comp.type == ComponentType::BOOLEAN ? "boolean" : "vec2");
+                comp_obj["description"] = comp.description;
+                components_array[j] = std::move(comp_obj);
+            }
+            dev_obj["components"] = std::move(components_array);
+
+            devices_array[i] = std::move(dev_obj);
+        }
+        response["devices"] = std::move(devices_array);
+
+        return crow::response(response);
+    });
+
+    // Switch device profile
+    CROW_ROUTE(app, "/v1/profile")
+        .methods("PUT"_method)([this](const crow::request& req) {
+            auto json = crow::json::load(req.body);
+            if (!json) {
+                return crow::response(400, "Invalid JSON");
+            }
+
+            if (!json.has("device") || json["device"].t() != crow::json::type::String) {
+                return crow::response(400, "Missing required field: device (string)");
+            }
+
+            std::string device_name = json["device"].s();
+            const DeviceProfile* new_profile = GetDeviceProfileByName(device_name);
+            if (!new_profile) {
+                return crow::response(404, "Unknown device: " + device_name);
+            }
+
+            // Switch the device
+            if (!simulator_->SwitchDevice(new_profile)) {
+                return crow::response(500, "Failed to switch device");
+            }
+
+            // Update the global pointer
+            *device_profile_ptr_ = new_profile;
+
+            crow::json::wvalue response;
+            response["status"] = "ok";
+            response["device"] = new_profile->name;
+            response["interaction_profile"] = new_profile->interaction_profile;
+            return crow::response(response);
+        });
+
     CROW_ROUTE(app, "/")
     ([]() {
         return "ox Simulator API Server\n\nAvailable endpoints:\n"
-               "  GET /v1/devices\n"
-               "  GET /v1/devices/<user_path>\n"
-               "  PUT /v1/devices/<user_path>\n"
-               "  GET /v1/states/<binding_path>\n"
-               "  PUT /v1/states/<binding_path>\n";
+               "  GET  /v1/profile              - Get current device profile info\n"
+               "  PUT  /v1/profile              - Switch device profile\n"
+               "  GET  /v1/devices              - List all devices\n"
+               "  GET  /v1/devices/<user_path>  - Get device pose\n"
+               "  PUT  /v1/devices/<user_path>  - Set device pose\n"
+               "  GET  /v1/states/<binding_path>  - Get input component state\n"
+               "  PUT  /v1/states/<binding_path>  - Set input component state\n";
     });
 
     std::cout << "Starting HTTP server on port " << port_ << "..." << std::endl;

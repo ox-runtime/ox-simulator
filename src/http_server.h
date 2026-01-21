@@ -21,7 +21,8 @@ class HttpServer {
     ~HttpServer();
 
     // Start server in background thread
-    bool Start(SimulatorCore* simulator, int port = 8765);
+    // device_profile_ptr: pointer to the current device profile pointer (can be updated for device switching)
+    bool Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, int port = 8765);
 
     // Stop server
     void Stop();
@@ -32,6 +33,7 @@ class HttpServer {
     void ServerThread();
 
     SimulatorCore* simulator_;
+    const DeviceProfile** device_profile_ptr_;  // Pointer to device profile pointer (for switching)
     int port_;
     std::thread server_thread_;
     std::atomic<bool> running_;
