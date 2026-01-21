@@ -9,6 +9,7 @@ set(OUTPUT_FOLDER "ox_simulator")
 # Source files
 set(DRIVER_SOURCES
     src/driver.cpp
+    src/config.cpp
     src/simulator_core.cpp
     src/device_profiles.cpp
     src/http_server.cpp
