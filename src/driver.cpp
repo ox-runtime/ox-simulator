@@ -1,6 +1,7 @@
 #include <ox_driver.h>
 
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -16,8 +17,6 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
-#include <limits.h>
-#include <unistd.h>
 #endif
 
 using namespace ox_sim;
@@ -96,31 +95,25 @@ static bool LoadConfig(const std::string& config_path) {
     return true;
 }
 
-// Get the config file path (same directory as driver)
-static std::string GetConfigPath() {
+// Helper to get module directory path
+static std::filesystem::path get_module_path() {
 #ifdef _WIN32
-    char path[MAX_PATH];
-    HMODULE hm = NULL;
-    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                           (LPCSTR)&GetConfigPath, &hm)) {
-        GetModuleFileNameA(hm, path, sizeof(path));
-        std::string module_path(path);
-        size_t last_slash = module_path.find_last_of("\\/");
-        return module_path.substr(0, last_slash + 1) + "config.json";
-    }
+    HMODULE module = nullptr;
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                       reinterpret_cast<LPCWSTR>(&get_module_path), &module);
+
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(module, path, MAX_PATH);
+    return std::filesystem::path(path).parent_path();
 #else
-    // Linux: get path to the current shared library
-    Dl_info info;
-    if (dladdr((void*)&GetConfigPath, &info)) {
-        std::string module_path(info.dli_fname);
-        size_t last_slash = module_path.find_last_of('/');
-        if (last_slash != std::string::npos) {
-            return module_path.substr(0, last_slash + 1) + "config.json";
-        }
-    }
+    Dl_info info{};
+    dladdr(reinterpret_cast<void*>(&get_module_path), &info);
+    return std::filesystem::path(info.dli_fname).parent_path();
 #endif
-    return "config.json";
 }
+
+// Get the config file path (same directory as driver)
+static std::string GetConfigPath() { return (get_module_path() / "config.json").string(); }
 
 // ===== Driver Callbacks =====
 
