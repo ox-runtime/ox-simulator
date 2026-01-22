@@ -188,7 +188,10 @@ static OxComponentResult simulator_get_input_state_boolean(int64_t predicted_tim
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    return g_simulator.GetInputStateBoolean(user_path, component_path, out_value);
+    bool value;
+    OxComponentResult result = g_simulator.GetInputStateBoolean(user_path, component_path, &value);
+    *out_value = value ? 1 : 0;
+    return result;
 }
 
 static OxComponentResult simulator_get_input_state_float(int64_t predicted_time, const char* user_path,
@@ -206,7 +209,11 @@ static OxComponentResult simulator_get_input_state_vector2f(int64_t predicted_ti
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    return g_simulator.GetInputStateVector2f(user_path, component_path, out_x, out_y);
+    OxVector2f vec;
+    OxComponentResult result = g_simulator.GetInputStateVec2(user_path, component_path, &vec);
+    *out_x = vec.x;
+    *out_y = vec.y;
+    return result;
 }
 
 static uint32_t simulator_get_interaction_profiles(const char** out_profiles, uint32_t max_count) {

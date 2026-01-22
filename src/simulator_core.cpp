@@ -35,18 +35,37 @@ const DeviceDef* SimulatorCore::FindDeviceDefByUserPath(const char* user_path) c
 }
 
 // Helper to find component information in device definition
-std::pair<bool, ComponentType> SimulatorCore::FindComponentInfo(const DeviceDef* device_def,
-                                                                const char* component_path) const {
+std::pair<int32_t, ComponentType> SimulatorCore::FindComponentInfo(const DeviceDef* device_def,
+                                                                   const char* component_path) const {
     if (!device_def) {
-        return {false, ComponentType::FLOAT};
+        return {-1, ComponentType::FLOAT};
     }
 
+    int32_t index = 0;
     for (const auto& comp : device_def->components) {
         if (std::strcmp(comp.path, component_path) == 0) {
-            return {true, comp.type};
+            return {index, comp.type};
         }
+        index++;
     }
-    return {false, ComponentType::FLOAT};
+    return {-1, ComponentType::FLOAT};
+}
+
+// Helper to validate device and component, returning input state pointer and component info
+std::tuple<DeviceInputState*, int32_t, ComponentType> SimulatorCore::ValidateDeviceAndComponent(
+    const char* user_path, const char* component_path) {
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
+    if (device_index < 0 || !device_def) {
+        return {nullptr, -1, ComponentType::FLOAT};
+    }
+
+    auto [comp_index, comp_type] = FindComponentInfo(device_def, component_path);
+    if (comp_index == -1) {
+        return {nullptr, -1, ComponentType::FLOAT};
+    }
+
+    return {&state_.device_inputs[device_index], comp_index, comp_type};
 }
 
 bool SimulatorCore::Initialize(const DeviceProfile* profile) {
@@ -74,21 +93,21 @@ bool SimulatorCore::Initialize(const DeviceProfile* profile) {
         state_.devices[i].pose = dev_def.default_pose;
 
         // Initialize input state (all components to zero/false)
-        state_.device_inputs[i].float_values.clear();
-        state_.device_inputs[i].boolean_values.clear();
-        state_.device_inputs[i].vec2_values.clear();
+        size_t max_component_index = dev_def.components.size();
+        state_.device_inputs[i].values.resize(max_component_index);
 
         // Pre-populate all components for this device
-        for (const auto& component : dev_def.components) {
+        for (size_t comp_index = 0; comp_index < dev_def.components.size(); ++comp_index) {
+            const auto& component = dev_def.components[comp_index];
             switch (component.type) {
                 case ComponentType::FLOAT:
-                    state_.device_inputs[i].float_values[component.path] = 0.0f;
+                    state_.device_inputs[i].values[comp_index] = 0.0f;
                     break;
                 case ComponentType::BOOLEAN:
-                    state_.device_inputs[i].boolean_values[component.path] = false;
+                    state_.device_inputs[i].values[comp_index] = false;
                     break;
                 case ComponentType::VEC2:
-                    state_.device_inputs[i].vec2_values[component.path] = {0.0f, 0.0f};
+                    state_.device_inputs[i].values[comp_index] = OxVector2f{0.0f, 0.0f};
                     break;
             }
         }
@@ -116,86 +135,6 @@ void SimulatorCore::GetAllDevices(OxDeviceState* out_states, uint32_t* out_count
     }
 }
 
-OxComponentResult SimulatorCore::GetInputStateBoolean(const char* user_path, const char* component_path,
-                                                      uint32_t* out_value) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-
-    int device_index = FindDeviceIndexByUserPath(user_path);
-    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
-    if (device_index < 0 || !device_def) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
-    if (!component_exists || comp_type != ComponentType::BOOLEAN) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    const DeviceInputState& input = state_.device_inputs[device_index];
-    auto it = input.boolean_values.find(component_path);
-    if (it != input.boolean_values.end()) {
-        *out_value = it->second ? 1 : 0;
-    } else {
-        *out_value = 0;
-    }
-
-    return OX_COMPONENT_AVAILABLE;
-}
-
-OxComponentResult SimulatorCore::GetInputStateFloat(const char* user_path, const char* component_path,
-                                                    float* out_value) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-
-    int device_index = FindDeviceIndexByUserPath(user_path);
-    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
-    if (device_index < 0 || !device_def) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
-    if (!component_exists || comp_type != ComponentType::FLOAT) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    const DeviceInputState& input = state_.device_inputs[device_index];
-    auto it = input.float_values.find(component_path);
-    if (it != input.float_values.end()) {
-        *out_value = it->second;
-    } else {
-        *out_value = 0.0f;
-    }
-
-    return OX_COMPONENT_AVAILABLE;
-}
-
-OxComponentResult SimulatorCore::GetInputStateVector2f(const char* user_path, const char* component_path, float* out_x,
-                                                       float* out_y) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-
-    int device_index = FindDeviceIndexByUserPath(user_path);
-    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
-    if (device_index < 0 || !device_def) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
-    if (!component_exists || comp_type != ComponentType::VEC2) {
-        return OX_COMPONENT_UNAVAILABLE;
-    }
-
-    const DeviceInputState& input = state_.device_inputs[device_index];
-    auto it = input.vec2_values.find(component_path);
-    if (it != input.vec2_values.end()) {
-        *out_x = it->second.x;
-        *out_y = it->second.y;
-    } else {
-        *out_x = 0.0f;
-        *out_y = 0.0f;
-    }
-
-    return OX_COMPONENT_AVAILABLE;
-}
-
 void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, bool is_active) {
     std::lock_guard<std::mutex> lock(state_mutex_);
 
@@ -211,37 +150,56 @@ void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, boo
     state_.devices[device_index].is_active = device_always_active ? 1 : (is_active ? 1 : 0);
 }
 
-void SimulatorCore::SetInputComponent(const char* user_path, const char* component_path, float value) {
+template <ComponentType CT, typename T>
+OxComponentResult SimulatorCore::GetInputState(const char* user_path, const char* component_path, T* out_value) {
     std::lock_guard<std::mutex> lock(state_mutex_);
 
-    // Find the device by user path
-    int device_index = FindDeviceIndexByUserPath(user_path);
-    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
-    if (device_index < 0 || !device_def) {
+    auto [input, comp_index, comp_type] = ValidateDeviceAndComponent(user_path, component_path);
+    if (!input || comp_index == -1 || comp_type != CT) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    *out_value = std::get<T>(input->values[comp_index]);
+    return OX_COMPONENT_AVAILABLE;
+}
+
+template <ComponentType CT, typename T>
+void SimulatorCore::SetInputState(const char* user_path, const char* component_path, const T& value) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    auto [input, comp_index, comp_type] = ValidateDeviceAndComponent(user_path, component_path);
+    if (!input || comp_index == -1 || comp_type != CT) {
         return;
     }
 
-    // Check if component exists in device definition
-    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
-    if (!component_exists) {
-        return;
-    }
+    input->values[comp_index] = value;
+}
 
-    DeviceInputState& input = state_.device_inputs[device_index];
+OxComponentResult SimulatorCore::GetInputStateBoolean(const char* user_path, const char* component_path,
+                                                      bool* out_value) {
+    return GetInputState<ComponentType::BOOLEAN, bool>(user_path, component_path, out_value);
+}
 
-    // Set value in dynamic storage
-    switch (comp_type) {
-        case ComponentType::FLOAT:
-            input.float_values[component_path] = value;
-            break;
-        case ComponentType::BOOLEAN:
-            input.boolean_values[component_path] = (value >= 0.5f);
-            break;
-        case ComponentType::VEC2:
-            // For VEC2, this sets just one axis - caller should use proper API
-            // For now, we'll just ignore single value sets for VEC2
-            break;
-    }
+OxComponentResult SimulatorCore::GetInputStateFloat(const char* user_path, const char* component_path,
+                                                    float* out_value) {
+    return GetInputState<ComponentType::FLOAT, float>(user_path, component_path, out_value);
+}
+
+OxComponentResult SimulatorCore::GetInputStateVec2(const char* user_path, const char* component_path,
+                                                   OxVector2f* out_value) {
+    return GetInputState<ComponentType::VEC2, OxVector2f>(user_path, component_path, out_value);
+}
+
+void SimulatorCore::SetInputStateBoolean(const char* user_path, const char* component_path, bool value) {
+    SetInputState<ComponentType::BOOLEAN, bool>(user_path, component_path, value);
+}
+
+void SimulatorCore::SetInputStateFloat(const char* user_path, const char* component_path, float value) {
+    SetInputState<ComponentType::FLOAT, float>(user_path, component_path, value);
+}
+
+void SimulatorCore::SetInputStateVec2(const char* user_path, const char* component_path, const OxVector2f& value) {
+    SetInputState<ComponentType::VEC2, OxVector2f>(user_path, component_path, value);
 }
 
 }  // namespace ox_sim
