@@ -135,19 +135,61 @@ void HttpServer::ServerThread() {
             return crow::response(400, "Invalid binding path");
         }
 
-        OxInputComponentState state;
-        OxComponentResult result =
-            simulator_->GetInputComponentState(user_path.c_str(), component_path.c_str(), &state);
+        // Determine component type from device profile
+        const DeviceProfile* profile = *device_profile_ptr_;
+        if (!profile) {
+            return crow::response(500, "No device profile loaded");
+        }
 
-        if (result != OX_COMPONENT_AVAILABLE) {
-            return crow::response(404, "Component not available");
+        ComponentType comp_type = ComponentType::FLOAT;
+        bool found = false;
+        for (const auto& dev : profile->devices) {
+            if (dev.user_path == user_path) {
+                for (const auto& comp : dev.components) {
+                    if (comp.path == component_path) {
+                        comp_type = comp.type;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found) break;
+        }
+
+        if (!found) {
+            return crow::response(404, "Component not found in device profile");
         }
 
         crow::json::wvalue response;
-        response["boolean_value"] = state.boolean_value;
-        response["float_value"] = state.float_value;
-        response["x"] = state.x;
-        response["y"] = state.y;
+        OxComponentResult result;
+
+        // Call the appropriate type-specific function
+        if (comp_type == ComponentType::BOOLEAN) {
+            uint32_t value = 0;
+            result = simulator_->GetInputStateBoolean(user_path.c_str(), component_path.c_str(), &value);
+            if (result != OX_COMPONENT_AVAILABLE) {
+                return crow::response(404, "Component not available");
+            }
+            response["type"] = "boolean";
+            response["value"] = (value != 0);
+        } else if (comp_type == ComponentType::FLOAT) {
+            float value = 0.0f;
+            result = simulator_->GetInputStateFloat(user_path.c_str(), component_path.c_str(), &value);
+            if (result != OX_COMPONENT_AVAILABLE) {
+                return crow::response(404, "Component not available");
+            }
+            response["type"] = "float";
+            response["value"] = value;
+        } else {  // VEC2
+            float x = 0.0f, y = 0.0f;
+            result = simulator_->GetInputStateVector2f(user_path.c_str(), component_path.c_str(), &x, &y);
+            if (result != OX_COMPONENT_AVAILABLE) {
+                return crow::response(404, "Component not available");
+            }
+            response["type"] = "vec2";
+            response["x"] = x;
+            response["y"] = y;
+        }
 
         return crow::response(response);
     });

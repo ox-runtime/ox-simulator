@@ -182,14 +182,31 @@ static void simulator_update_devices(int64_t predicted_time, OxDeviceState* out_
     g_simulator.GetAllDevices(out_states, out_count);
 }
 
-static OxComponentResult simulator_get_input_component_state(int64_t predicted_time, const char* user_path,
-                                                             const char* component_path,
-                                                             OxInputComponentState* out_state) {
+static OxComponentResult simulator_get_input_state_boolean(int64_t predicted_time, const char* user_path,
+                                                           const char* component_path, uint32_t* out_value) {
     if (!g_device_profile) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    return g_simulator.GetInputComponentState(user_path, component_path, out_state);
+    return g_simulator.GetInputStateBoolean(user_path, component_path, out_value);
+}
+
+static OxComponentResult simulator_get_input_state_float(int64_t predicted_time, const char* user_path,
+                                                         const char* component_path, float* out_value) {
+    if (!g_device_profile) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    return g_simulator.GetInputStateFloat(user_path, component_path, out_value);
+}
+
+static OxComponentResult simulator_get_input_state_vector2f(int64_t predicted_time, const char* user_path,
+                                                            const char* component_path, float* out_x, float* out_y) {
+    if (!g_device_profile) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    return g_simulator.GetInputStateVector2f(user_path, component_path, out_x, out_y);
 }
 
 static uint32_t simulator_get_interaction_profiles(const char** out_profiles, uint32_t max_count) {
@@ -216,7 +233,9 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     callbacks->get_tracking_capabilities = simulator_get_tracking_capabilities;
     callbacks->update_view_pose = simulator_update_view_pose;
     callbacks->update_devices = simulator_update_devices;
-    callbacks->get_input_component_state = simulator_get_input_component_state;
+    callbacks->get_input_state_boolean = simulator_get_input_state_boolean;
+    callbacks->get_input_state_float = simulator_get_input_state_float;
+    callbacks->get_input_state_vector2f = simulator_get_input_state_vector2f;
     callbacks->get_interaction_profiles = simulator_get_interaction_profiles;
 
     return 1;

@@ -52,8 +52,10 @@ class SimulatorCore {
 
     // Device state access (thread-safe)
     void GetAllDevices(OxDeviceState* out_states, uint32_t* out_count);
-    OxComponentResult GetInputComponentState(const char* user_path, const char* component_path,
-                                             OxInputComponentState* out_state);
+    OxComponentResult GetInputStateBoolean(const char* user_path, const char* component_path, uint32_t* out_value);
+    OxComponentResult GetInputStateFloat(const char* user_path, const char* component_path, float* out_value);
+    OxComponentResult GetInputStateVector2f(const char* user_path, const char* component_path, float* out_x,
+                                            float* out_y);
 
     // Update device state
     void SetDevicePose(const char* user_path, const OxPose& pose, bool is_active);

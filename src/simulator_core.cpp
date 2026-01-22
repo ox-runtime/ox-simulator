@@ -116,52 +116,81 @@ void SimulatorCore::GetAllDevices(OxDeviceState* out_states, uint32_t* out_count
     }
 }
 
-OxComponentResult SimulatorCore::GetInputComponentState(const char* user_path, const char* component_path,
-                                                        OxInputComponentState* out_state) {
+OxComponentResult SimulatorCore::GetInputStateBoolean(const char* user_path, const char* component_path,
+                                                      uint32_t* out_value) {
     std::lock_guard<std::mutex> lock(state_mutex_);
 
-    // Find the device by user path
     int device_index = FindDeviceIndexByUserPath(user_path);
     const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
     if (device_index < 0 || !device_def) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    // Check if component exists in device definition
     auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
-    if (!component_exists) {
+    if (!component_exists || comp_type != ComponentType::BOOLEAN) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
     const DeviceInputState& input = state_.device_inputs[device_index];
-    memset(out_state, 0, sizeof(OxInputComponentState));
+    auto it = input.boolean_values.find(component_path);
+    if (it != input.boolean_values.end()) {
+        *out_value = it->second ? 1 : 0;
+    } else {
+        *out_value = 0;
+    }
 
-    // Retrieve value from dynamic storage
-    switch (comp_type) {
-        case ComponentType::FLOAT: {
-            auto it = input.float_values.find(component_path);
-            if (it != input.float_values.end()) {
-                out_state->float_value = it->second;
-                out_state->boolean_value = (it->second > 0.5f) ? 1 : 0;
-            }
-            break;
-        }
-        case ComponentType::BOOLEAN: {
-            auto it = input.boolean_values.find(component_path);
-            if (it != input.boolean_values.end()) {
-                out_state->boolean_value = it->second ? 1 : 0;
-                out_state->float_value = it->second ? 1.0f : 0.0f;
-            }
-            break;
-        }
-        case ComponentType::VEC2: {
-            auto it = input.vec2_values.find(component_path);
-            if (it != input.vec2_values.end()) {
-                out_state->x = it->second.x;
-                out_state->y = it->second.y;
-            }
-            break;
-        }
+    return OX_COMPONENT_AVAILABLE;
+}
+
+OxComponentResult SimulatorCore::GetInputStateFloat(const char* user_path, const char* component_path,
+                                                    float* out_value) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
+    if (device_index < 0 || !device_def) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
+    if (!component_exists || comp_type != ComponentType::FLOAT) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    const DeviceInputState& input = state_.device_inputs[device_index];
+    auto it = input.float_values.find(component_path);
+    if (it != input.float_values.end()) {
+        *out_value = it->second;
+    } else {
+        *out_value = 0.0f;
+    }
+
+    return OX_COMPONENT_AVAILABLE;
+}
+
+OxComponentResult SimulatorCore::GetInputStateVector2f(const char* user_path, const char* component_path, float* out_x,
+                                                       float* out_y) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    const DeviceDef* device_def = FindDeviceDefByUserPath(user_path);
+    if (device_index < 0 || !device_def) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    auto [component_exists, comp_type] = FindComponentInfo(device_def, component_path);
+    if (!component_exists || comp_type != ComponentType::VEC2) {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
+
+    const DeviceInputState& input = state_.device_inputs[device_index];
+    auto it = input.vec2_values.find(component_path);
+    if (it != input.vec2_values.end()) {
+        *out_x = it->second.x;
+        *out_y = it->second.y;
+    } else {
+        *out_x = 0.0f;
+        *out_y = 0.0f;
     }
 
     return OX_COMPONENT_AVAILABLE;
