@@ -204,15 +204,14 @@ static OxComponentResult simulator_get_input_state_float(int64_t predicted_time,
 }
 
 static OxComponentResult simulator_get_input_state_vector2f(int64_t predicted_time, const char* user_path,
-                                                            const char* component_path, float* out_x, float* out_y) {
+                                                            const char* component_path, OxVector2f* out_value) {
     if (!g_device_profile) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
     OxVector2f vec;
     OxComponentResult result = g_simulator.GetInputStateVec2(user_path, component_path, &vec);
-    *out_x = vec.x;
-    *out_y = vec.y;
+    *out_value = vec;
     return result;
 }
 
