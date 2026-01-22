@@ -6,6 +6,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <variant>
 
 #include "device_profiles.h"
@@ -27,7 +28,6 @@ struct DeviceState {
     uint32_t device_count;
 
     // Input state per device (indexed same as devices array)
-    // Using dynamic map instead of fixed struct
     DeviceInputState device_inputs[OX_MAX_DEVICES];
 };
 
@@ -62,20 +62,22 @@ class SimulatorCore {
     void SetInputStateFloat(const char* user_path, const char* component_path, float value);
     void SetInputStateVec2(const char* user_path, const char* component_path, const OxVector2f& value);
 
-   private:
     // Helper functions
-    int FindDeviceIndexByUserPath(const char* user_path) const;
     const DeviceDef* FindDeviceDefByUserPath(const char* user_path) const;
     std::pair<int32_t, ComponentType> FindComponentInfo(const DeviceDef* device_def, const char* component_path) const;
-    std::tuple<DeviceInputState*, int32_t, ComponentType> ValidateDeviceAndComponent(const char* user_path,
-                                                                                     const char* component_path);
 
+   private:
     // Template implementations for input state access
     template <ComponentType CT, typename T>
     OxComponentResult GetInputState(const char* user_path, const char* component_path, T* out_value);
 
     template <ComponentType CT, typename T>
     void SetInputState(const char* user_path, const char* component_path, const T& value);
+
+    // Helper functions
+    int FindDeviceIndexByUserPath(const char* user_path) const;
+    std::tuple<DeviceInputState*, int32_t, ComponentType> ValidateDeviceAndComponent(const char* user_path,
+                                                                                     const char* component_path);
 
     // Member variables
     const DeviceProfile* profile_;

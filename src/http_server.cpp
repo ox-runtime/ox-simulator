@@ -136,27 +136,12 @@ void HttpServer::ServerThread() {
         }
 
         // Determine component type from device profile
-        const DeviceProfile* profile = *device_profile_ptr_;
-        if (!profile) {
-            return crow::response(500, "No device profile loaded");
+        const DeviceDef* device_def = simulator_->FindDeviceDefByUserPath(user_path.c_str());
+        if (!device_def) {
+            return crow::response(404, "Device not found");
         }
-
-        ComponentType comp_type = ComponentType::FLOAT;
-        bool found = false;
-        for (const auto& dev : profile->devices) {
-            if (dev.user_path == user_path) {
-                for (const auto& comp : dev.components) {
-                    if (comp.path == component_path) {
-                        comp_type = comp.type;
-                        found = true;
-                        break;
-                    }
-                }
-            }
-            if (found) break;
-        }
-
-        if (!found) {
+        auto [comp_index, comp_type] = simulator_->FindComponentInfo(device_def, component_path.c_str());
+        if (comp_index == -1) {
             return crow::response(404, "Component not found in device profile");
         }
 
@@ -165,13 +150,13 @@ void HttpServer::ServerThread() {
 
         // Call the appropriate type-specific function
         if (comp_type == ComponentType::BOOLEAN) {
-            uint32_t value = 0;
+            bool value = false;
             result = simulator_->GetInputStateBoolean(user_path.c_str(), component_path.c_str(), &value);
             if (result != OX_COMPONENT_AVAILABLE) {
                 return crow::response(404, "Component not available");
             }
             response["type"] = "boolean";
-            response["value"] = (value != 0);
+            response["value"] = value;
         } else if (comp_type == ComponentType::FLOAT) {
             float value = 0.0f;
             result = simulator_->GetInputStateFloat(user_path.c_str(), component_path.c_str(), &value);
@@ -181,14 +166,14 @@ void HttpServer::ServerThread() {
             response["type"] = "float";
             response["value"] = value;
         } else {  // VEC2
-            float x = 0.0f, y = 0.0f;
-            result = simulator_->GetInputStateVector2f(user_path.c_str(), component_path.c_str(), &x, &y);
+            OxVector2f vec;
+            result = simulator_->GetInputStateVec2(user_path.c_str(), component_path.c_str(), &vec);
             if (result != OX_COMPONENT_AVAILABLE) {
                 return crow::response(404, "Component not available");
             }
             response["type"] = "vec2";
-            response["x"] = x;
-            response["y"] = y;
+            response["x"] = vec.x;
+            response["y"] = vec.y;
         }
 
         return crow::response(response);
@@ -201,17 +186,6 @@ void HttpServer::ServerThread() {
                 return crow::response(400, "Invalid JSON");
             }
 
-            if (!json.has("value")) {
-                return crow::response(400, "Missing required field: value");
-            }
-
-            float value = 0.0f;
-            if (json["value"].t() == crow::json::type::Number) {
-                value = json["value"].d();
-            } else if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
-                value = json["value"].b() ? 1.0f : 0.0f;
-            }
-
             // prepend '/' to binding_path since it'll be missing
             std::string full_binding_path = "/" + binding_path;
 
@@ -220,7 +194,69 @@ void HttpServer::ServerThread() {
                 return crow::response(400, "Invalid binding path");
             }
 
-            simulator_->SetInputComponent(user_path.c_str(), component_path.c_str(), value);
+            // Determine component type from device profile
+            const DeviceDef* device_def = simulator_->FindDeviceDefByUserPath(user_path.c_str());
+            if (!device_def) {
+                return crow::response(404, "Device not found");
+            }
+            auto [comp_index, comp_type] = simulator_->FindComponentInfo(device_def, component_path.c_str());
+            if (comp_index == -1) {
+                return crow::response(404, "Component not found in device profile");
+            }
+
+            // Handle different component types
+            switch (comp_type) {
+                case ComponentType::BOOLEAN: {
+                    if (!json.has("value")) {
+                        return crow::response(400, "Missing required field: value");
+                    }
+                    bool bool_value = false;
+                    if (json["value"].t() == crow::json::type::True || json["value"].t() == crow::json::type::False) {
+                        bool_value = json["value"].b();
+                    } else if (json["value"].t() == crow::json::type::Number) {
+                        bool_value = json["value"].d() >= 0.5;
+                    } else {
+                        return crow::response(400, "Invalid value for boolean component");
+                    }
+                    simulator_->SetInputStateBoolean(user_path.c_str(), component_path.c_str(), bool_value);
+                    break;
+                }
+                case ComponentType::FLOAT: {
+                    if (!json.has("value")) {
+                        return crow::response(400, "Missing required field: value");
+                    }
+                    float float_value = 0.0f;
+                    if (json["value"].t() == crow::json::type::Number) {
+                        float_value = json["value"].d();
+                    } else if (json["value"].t() == crow::json::type::True ||
+                               json["value"].t() == crow::json::type::False) {
+                        float_value = json["value"].b() ? 1.0f : 0.0f;
+                    } else {
+                        return crow::response(400, "Invalid value for float component");
+                    }
+                    simulator_->SetInputStateFloat(user_path.c_str(), component_path.c_str(), float_value);
+                    break;
+                }
+                case ComponentType::VEC2: {
+                    OxVector2f vec = {0.0f, 0.0f};
+
+                    // Check if it's an object with x,y fields
+                    if (json.has("x") && json.has("y")) {
+                        if (json["x"].t() == crow::json::type::Number && json["y"].t() == crow::json::type::Number) {
+                            vec.x = json["x"].d();
+                            vec.y = json["y"].d();
+                        } else {
+                            return crow::response(400, "Invalid x,y values for vec2 component");
+                        }
+                    } else {
+                        return crow::response(400, "Missing required fields: x,y for vec2 component");
+                    }
+
+                    simulator_->SetInputStateVec2(user_path.c_str(), component_path.c_str(), vec);
+                    break;
+                }
+            }
+
             return crow::response(200, "OK");
         });
 
