@@ -155,12 +155,28 @@ OxComponentResult SimulatorCore::GetInputState(const char* user_path, const char
     std::lock_guard<std::mutex> lock(state_mutex_);
 
     auto [input, comp_index, comp_type] = ValidateDeviceAndComponent(user_path, component_path);
-    if (!input || comp_index == -1 || comp_type != CT) {
+    if (!input || comp_index == -1) {
         return OX_COMPONENT_UNAVAILABLE;
     }
 
-    *out_value = std::get<T>(input->values[comp_index]);
-    return OX_COMPONENT_AVAILABLE;
+    if (comp_type == CT) {
+        *out_value = std::get<T>(input->values[comp_index]);
+        return OX_COMPONENT_AVAILABLE;
+    } else if (CT == ComponentType::FLOAT && comp_type == ComponentType::BOOLEAN) {
+        if constexpr (CT == ComponentType::FLOAT) {
+            bool val = std::get<bool>(input->values[comp_index]);
+            *out_value = val ? 1.0f : 0.0f;
+        }
+        return OX_COMPONENT_AVAILABLE;
+    } else if (CT == ComponentType::BOOLEAN && comp_type == ComponentType::FLOAT) {
+        if constexpr (CT == ComponentType::BOOLEAN) {
+            float val = std::get<float>(input->values[comp_index]);
+            *out_value = (val >= 0.5f) ? true : false;
+        }
+        return OX_COMPONENT_AVAILABLE;
+    } else {
+        return OX_COMPONENT_UNAVAILABLE;
+    }
 }
 
 template <ComponentType CT, typename T>
@@ -168,11 +184,23 @@ void SimulatorCore::SetInputState(const char* user_path, const char* component_p
     std::lock_guard<std::mutex> lock(state_mutex_);
 
     auto [input, comp_index, comp_type] = ValidateDeviceAndComponent(user_path, component_path);
-    if (!input || comp_index == -1 || comp_type != CT) {
+    if (!input || comp_index == -1) {
         return;
     }
 
-    input->values[comp_index] = value;
+    if (comp_type == CT) {
+        input->values[comp_index] = value;
+    } else if (CT == ComponentType::FLOAT && comp_type == ComponentType::BOOLEAN) {
+        if constexpr (CT == ComponentType::FLOAT) {
+            input->values[comp_index] = (value >= 0.5f) ? true : false;
+        }
+    } else if (CT == ComponentType::BOOLEAN && comp_type == ComponentType::FLOAT) {
+        if constexpr (CT == ComponentType::BOOLEAN) {
+            input->values[comp_index] = value ? 1.0f : 0.0f;
+        }
+    } else {
+        return;
+    }
 }
 
 OxComponentResult SimulatorCore::GetInputStateBoolean(const char* user_path, const char* component_path,
