@@ -146,7 +146,7 @@ static void simulator_update_view_pose(int64_t predicted_time, uint32_t eye_inde
     // Get HMD pose from device list (HMD is at /user/head)
     OxDeviceState devices[OX_MAX_DEVICES];
     uint32_t device_count;
-    g_simulator.GetAllDevices(devices, &device_count);
+    g_simulator.UpdateAllDevices(devices, &device_count);
 
     // Find HMD device
     OxPose hmd_pose = {{0.0f, 1.6f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};  // Default origin at eye level
@@ -179,7 +179,7 @@ static void simulator_update_devices(int64_t predicted_time, OxDeviceState* out_
         return;
     }
 
-    g_simulator.GetAllDevices(out_states, out_count);
+    g_simulator.UpdateAllDevices(out_states, out_count);
 }
 
 static OxComponentResult simulator_get_input_state_boolean(int64_t predicted_time, const char* user_path,

@@ -70,29 +70,25 @@ void HttpServer::ServerThread() {
     crow::SimpleApp app;
 
     CROW_ROUTE(app, "/v1/devices/<path>").methods("GET"_method)([this](const std::string& user_path) {
-        OxDeviceState devices[OX_MAX_DEVICES];
-        uint32_t device_count;
-        simulator_->GetAllDevices(devices, &device_count);
-
         // prepend '/' to user_path since it'll be missing
         std::string full_user_path = "/" + user_path;
 
-        for (uint32_t i = 0; i < device_count; ++i) {
-            if (std::strcmp(devices[i].user_path, full_user_path.c_str()) == 0) {
-                crow::json::wvalue response;
-                response["active"] = devices[i].is_active;
-                response["position"]["x"] = devices[i].pose.position.x;
-                response["position"]["y"] = devices[i].pose.position.y;
-                response["position"]["z"] = devices[i].pose.position.z;
-                response["orientation"]["x"] = devices[i].pose.orientation.x;
-                response["orientation"]["y"] = devices[i].pose.orientation.y;
-                response["orientation"]["z"] = devices[i].pose.orientation.z;
-                response["orientation"]["w"] = devices[i].pose.orientation.w;
-                return crow::response(response);
-            }
+        OxPose pose;
+        bool is_active;
+        if (!simulator_->GetDevicePose(full_user_path.c_str(), &pose, &is_active)) {
+            return crow::response(404, "Device not found");
         }
 
-        return crow::response(404, "Device not found");
+        crow::json::wvalue response;
+        response["active"] = is_active;
+        response["position"]["x"] = pose.position.x;
+        response["position"]["y"] = pose.position.y;
+        response["position"]["z"] = pose.position.z;
+        response["orientation"]["x"] = pose.orientation.x;
+        response["orientation"]["y"] = pose.orientation.y;
+        response["orientation"]["z"] = pose.orientation.z;
+        response["orientation"]["w"] = pose.orientation.w;
+        return crow::response(response);
     });
 
     CROW_ROUTE(app, "/v1/devices/<path>")

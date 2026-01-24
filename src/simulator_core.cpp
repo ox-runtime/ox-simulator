@@ -127,12 +127,25 @@ void SimulatorCore::Shutdown() {
     state_.device_count = 0;
 }
 
-void SimulatorCore::GetAllDevices(OxDeviceState* out_states, uint32_t* out_count) {
+void SimulatorCore::UpdateAllDevices(OxDeviceState* out_states, uint32_t* out_count) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     *out_count = state_.device_count;
     for (uint32_t i = 0; i < state_.device_count && i < OX_MAX_DEVICES; i++) {
         out_states[i] = state_.devices[i];
     }
+}
+
+bool SimulatorCore::GetDevicePose(const char* user_path, OxPose* out_pose, bool* out_is_active) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    if (device_index < 0) {
+        return false;
+    }
+
+    *out_pose = state_.devices[device_index].pose;
+    *out_is_active = state_.devices[device_index].is_active != 0;
+    return true;
 }
 
 void SimulatorCore::SetDevicePose(const char* user_path, const OxPose& pose, bool is_active) {

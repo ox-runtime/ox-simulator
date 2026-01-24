@@ -47,7 +47,8 @@ class SimulatorCore {
     bool SwitchDevice(const DeviceProfile* profile);
 
     // Device state access
-    void GetAllDevices(OxDeviceState* out_states, uint32_t* out_count);
+    void UpdateAllDevices(OxDeviceState* out_states, uint32_t* out_count);
+    bool GetDevicePose(const char* user_path, OxPose* out_pose, bool* out_is_active);
 
     // Input state access
     OxComponentResult GetInputStateBoolean(const char* user_path, const char* component_path, bool* out_value);
