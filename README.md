@@ -1,5 +1,7 @@
 # ox-simulator
 
+**WORK-IN-PROGRESS** - This is still a prototype and is not (yet) fully compliant with the OpenXR spec.
+
 A simulator for the [ox](https://github.com/ox-runtime/ox) OpenXR runtime. This can help test and emulate different VR devices (Quest, Vive, Index, Vive trackers, etc.) programmatically with runtime device switching.
 
 ## Purpose
