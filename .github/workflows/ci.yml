@@ -26,6 +26,7 @@ jobs:
 
     - name: Create zip
       id: create_zip
+      shell: bash
       run: |
         cd build
         if [ "$RUNNER_OS" == "Windows" ]; then
