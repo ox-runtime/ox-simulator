@@ -14,6 +14,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Download ox_driver.h
+      run: curl -L -o ox_driver.h https://github.com/ox-runtime/ox/releases/latest/download/ox_driver.h
+
     - name: Build
       run: |
         cmake -B build -DCMAKE_BUILD_TYPE=Release
