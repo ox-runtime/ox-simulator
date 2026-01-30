@@ -38,6 +38,6 @@ jobs:
     - name: Upload release asset
       uses: softprops/action-gh-release@v1
       with:
-        files: ${{ steps.create_zip.outputs.zip_file }}
+        files: build/${{ steps.create_zip.outputs.zip_file }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
