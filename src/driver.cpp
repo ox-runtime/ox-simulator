@@ -24,6 +24,7 @@ static HttpServer g_http_server;
 static GuiWindow g_gui_window;
 SimulatorConfig g_config;
 const ox_sim::DeviceProfile* g_device_profile = nullptr;
+static bool g_api_enabled = true;  // API enabled state (shared between GUI and driver)
 
 static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v);
 
@@ -52,8 +53,11 @@ static int simulator_initialize(void) {
         return 0;
     }
 
+    // Initialize API enabled state from config
+    g_api_enabled = g_config.api;
+
     // Start interfaces based on configuration
-    if (g_config.api) {
+    if (g_api_enabled) {
         if (!g_http_server.Start(&g_simulator, &g_device_profile, g_config.api_port)) {
             std::cerr << "Failed to start HTTP server" << std::endl;
             return 0;
@@ -61,7 +65,7 @@ static int simulator_initialize(void) {
     }
 
     if (!g_config.headless) {
-        if (!g_gui_window.Start(&g_simulator)) {
+        if (!g_gui_window.Start(&g_simulator, &g_device_profile, &g_api_enabled)) {
             std::cerr << "Failed to start GUI window" << std::endl;
             g_http_server.Stop();
             return 0;
