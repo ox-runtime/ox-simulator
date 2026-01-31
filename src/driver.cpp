@@ -54,22 +54,13 @@ static int simulator_initialize(void) {
 
     // Start interfaces based on configuration
     if (g_config.api) {
-        std::cout << "Starting HTTP API server on port " << g_config.api_port << "..." << std::endl;
         if (!g_http_server.Start(&g_simulator, &g_device_profile, g_config.api_port)) {
             std::cerr << "Failed to start HTTP server" << std::endl;
             return 0;
         }
-        std::cout << "HTTP API server started successfully" << std::endl;
-        std::cout << "Use API endpoints to control the simulator:" << std::endl;
-        std::cout << "  GET/PUT  http://localhost:" << g_config.api_port << "/v1/profile" << std::endl;
-        std::cout << "  GET/PUT  http://localhost:" << g_config.api_port << "/v1/devices/user/head" << std::endl;
-        std::cout << "  GET/PUT  http://localhost:" << g_config.api_port << "/v1/devices/user/hand/right" << std::endl;
-        std::cout << "  GET/PUT  http://localhost:" << g_config.api_port
-                  << "/v1/inputs/user/hand/right/input/trigger/value" << std::endl;
     }
 
     if (!g_config.headless) {
-        std::cout << "Starting GUI interface..." << std::endl;
         if (!g_gui_window.Start(&g_simulator)) {
             std::cerr << "Failed to start GUI window" << std::endl;
             g_http_server.Stop();
