@@ -17,7 +17,8 @@
 // Configuration structure
 struct SimulatorConfig {
     std::string device = "oculus_quest_2";
-    std::string mode = "api";
+    bool headless = false;
+    bool api = true;
     int api_port = 8765;
 };
 
@@ -29,7 +30,7 @@ inline bool LoadConfig(const std::string& config_path) {
     std::ifstream file(config_path);
     if (!file.is_open()) {
         std::cout << "Config file not found at: " << config_path << std::endl;
-        std::cout << "Using defaults: device=oculus_quest_2, mode=api, port=8765" << std::endl;
+        std::cout << "Using defaults: device=oculus_quest_2, headless=false, api=true, port=8765" << std::endl;
         return false;
     }
 
@@ -52,13 +53,17 @@ inline bool LoadConfig(const std::string& config_path) {
         g_config.device = json["device"].s();
     }
 
-    if (json.has("mode") && json["mode"].t() == crow::json::type::String) {
-        g_config.mode = json["mode"].s();
-        // Validate mode
-        if (g_config.mode != "api" && g_config.mode != "gui") {
-            std::cerr << "WARNING: Invalid mode '" << g_config.mode << "', defaulting to 'api'" << std::endl;
-            g_config.mode = "api";
-        }
+    if (json.has("headless") && json["headless"].t() == crow::json::type::True) {
+        g_config.headless = true;
+        g_config.api = true;  // Headless mode automatically enables API
+    } else if (json.has("headless") && json["headless"].t() == crow::json::type::False) {
+        g_config.headless = false;
+    }
+
+    if (json.has("api") && json["api"].t() == crow::json::type::True) {
+        g_config.api = true;
+    } else if (json.has("api") && json["api"].t() == crow::json::type::False) {
+        g_config.api = false;
     }
 
     if (json.has("api_port") && json["api_port"].t() == crow::json::type::Number) {
@@ -70,8 +75,8 @@ inline bool LoadConfig(const std::string& config_path) {
         }
     }
 
-    std::cout << "Loaded config: device=" << g_config.device << ", mode=" << g_config.mode
-              << ", port=" << g_config.api_port << std::endl;
+    std::cout << "Loaded config: device=" << g_config.device << ", headless=" << (g_config.headless ? "true" : "false")
+              << ", api=" << (g_config.api ? "true" : "false") << ", port=" << g_config.api_port << std::endl;
 
     return true;
 }

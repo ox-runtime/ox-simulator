@@ -5,6 +5,7 @@
 #include <string>
 
 #include "crow/app.h"
+#include "crow/json.h"
 #include "device_profiles.h"
 
 namespace ox_sim {
@@ -23,6 +24,8 @@ bool HttpServer::Start(SimulatorCore* simulator, const DeviceProfile** device_pr
         return false;  // Already running
     }
 
+    std::cout << "Starting HTTP API server on port " << port << "..." << std::endl;
+
     simulator_ = simulator;
     device_profile_ptr_ = device_profile_ptr;
     port_ = port;
@@ -36,7 +39,17 @@ bool HttpServer::Start(SimulatorCore* simulator, const DeviceProfile** device_pr
     // Give server time to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    return true;
+    if (running_.load()) {
+        std::cout << "HTTP API server started successfully" << std::endl;
+        std::cout << "Use API endpoints to control the simulator:" << std::endl;
+        std::cout << "  GET/PUT  http://localhost:" << port << "/v1/profile" << std::endl;
+        std::cout << "  GET/PUT  http://localhost:" << port << "/v1/devices/user/head" << std::endl;
+        std::cout << "  GET/PUT  http://localhost:" << port << "/v1/devices/user/hand/right" << std::endl;
+        std::cout << "  GET/PUT  http://localhost:" << port << "/v1/inputs/user/hand/right/input/trigger/value"
+                  << std::endl;
+    }
+
+    return running_.load();
 }
 
 void HttpServer::Stop() {

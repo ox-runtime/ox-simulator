@@ -6,34 +6,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(OUTPUT_FOLDER "ox_simulator")
 
+# Add subdirectories
+add_subdirectory(src/api)
+add_subdirectory(src/gui)
+
 # Source files
-set(DRIVER_SOURCES
+set(SIMULATOR_SOURCES
     src/driver.cpp
     src/simulator_core.cpp
     src/device_profiles.cpp
-    src/http_server.cpp
-    src/gui_window.cpp
+    ${API_SOURCES}
+    ${GUI_SOURCES}
 )
 
 # Driver shared library - output as ox_driver.dll / libox_driver.so / libox_driver.dylib
-add_library(ox_simulator SHARED ${DRIVER_SOURCES})
-
-# Include directories
-target_include_directories(ox_simulator PRIVATE
-    src
-    ${CMAKE_SOURCE_DIR}  # For ox_driver.h in root directory
-    ${CMAKE_SOURCE_DIR}/third_party  # For third-party headers (crow, asio)
-)
-
-# Platform-specific settings
-if(WIN32)
-    # Windows requires ws2_32 for networking and _WIN32_WINNT definition for ASIO
-    target_link_libraries(ox_simulator PRIVATE ws2_32)
-    target_compile_definitions(ox_simulator PRIVATE _WIN32_WINNT=0x0601)  # Windows 7+
-endif()
+add_library(ox-simulator SHARED ${SIMULATOR_SOURCES})
 
 # Rename to standardized driver library name
-set_target_properties(ox_simulator PROPERTIES
+set_target_properties(ox-simulator PROPERTIES
     OUTPUT_NAME "ox_driver"
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}
@@ -43,8 +33,24 @@ set_target_properties(ox_simulator PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}
 )
 
+# Include directories
+target_include_directories(ox-simulator PRIVATE
+    src
+    ${CMAKE_SOURCE_DIR}/src/api
+    ${CMAKE_SOURCE_DIR}/src/api/third_party
+    ${CMAKE_SOURCE_DIR}/src/gui
+    ${CMAKE_SOURCE_DIR}  # For ox_driver.h in root directory
+)
+
+# Platform-specific settings
+if(WIN32)
+    # Windows requires ws2_32 for networking and _WIN32_WINNT definition for ASIO
+    target_link_libraries(ox-simulator PRIVATE ws2_32)
+    target_compile_definitions(ox-simulator PRIVATE _WIN32_WINNT=0x0601)  # Windows 7+
+endif()
+
 # Copy config.json to output directory
-add_custom_command(TARGET ox_simulator POST_BUILD
+add_custom_command(TARGET ox-simulator POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config.json
         ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}/config.json
@@ -52,15 +58,14 @@ add_custom_command(TARGET ox_simulator POST_BUILD
 )
 
 # Print build completion message
-add_custom_command(TARGET ox_simulator POST_BUILD
+add_custom_command(TARGET ox-simulator POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "====================================================================="
-    COMMAND ${CMAKE_COMMAND} -E echo "ox simulator build complete!"
+    COMMAND ${CMAKE_COMMAND} -E echo "ox simulator driver build complete!"
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "Output: ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}"
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "Copy ${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER} to your ox runtime's 'drivers' folder"
-    COMMAND ${CMAKE_COMMAND} -E echo "Edit config.json to select device type and interface mode"
     COMMAND ${CMAKE_COMMAND} -E echo ""
     COMMAND ${CMAKE_COMMAND} -E echo "====================================================================="
     VERBATIM

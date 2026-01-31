@@ -52,8 +52,8 @@ static int simulator_initialize(void) {
         return 0;
     }
 
-    // Start interface based on mode
-    if (g_config.mode == "api") {
+    // Start interfaces based on configuration
+    if (g_config.api) {
         std::cout << "Starting HTTP API server on port " << g_config.api_port << "..." << std::endl;
         if (!g_http_server.Start(&g_simulator, &g_device_profile, g_config.api_port)) {
             std::cerr << "Failed to start HTTP server" << std::endl;
@@ -66,15 +66,15 @@ static int simulator_initialize(void) {
         std::cout << "  GET/PUT  http://localhost:" << g_config.api_port << "/v1/devices/user/hand/right" << std::endl;
         std::cout << "  GET/PUT  http://localhost:" << g_config.api_port
                   << "/v1/inputs/user/hand/right/input/trigger/value" << std::endl;
-    } else if (g_config.mode == "gui") {
+    }
+
+    if (!g_config.headless) {
         std::cout << "Starting GUI interface..." << std::endl;
         if (!g_gui_window.Start(&g_simulator)) {
             std::cerr << "Failed to start GUI window" << std::endl;
+            g_http_server.Stop();
             return 0;
         }
-    } else {
-        std::cerr << "Unknown mode: " << g_config.mode << std::endl;
-        return 0;
     }
 
     std::cout << "Simulator driver initialized successfully" << std::endl;

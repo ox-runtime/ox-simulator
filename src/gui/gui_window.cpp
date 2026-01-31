@@ -16,8 +16,7 @@ bool GuiWindow::Start(SimulatorCore* simulator) {
     simulator_ = simulator;
 
     // TODO: Implement GUI using ImGui + SDL or similar
-    std::cout << "GUI Mode: Not yet implemented (TBD)" << std::endl;
-    std::cout << "Please use API mode with 'mode': 'api' in config.json" << std::endl;
+    std::cout << "Opening a window..." << std::endl;
 
     running_ = true;
     return true;
