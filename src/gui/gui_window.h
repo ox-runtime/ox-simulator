@@ -40,7 +40,7 @@ class GuiWindow {
     void RenderFrame();
 
     // Render device-specific panels
-    void RenderDevicePanel(const DeviceDef& device, int device_index);
+    void RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width);
 
     // Render component controls
     void RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index);
