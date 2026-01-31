@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(OUTPUT_FOLDER "ox_simulator")
 
+# Find OpenGL for GUI
+find_package(OpenGL REQUIRED)
+
 # Add subdirectories
 add_subdirectory(src/api)
 add_subdirectory(src/gui)
@@ -38,15 +41,26 @@ target_include_directories(ox-simulator PRIVATE
     src
     ${CMAKE_SOURCE_DIR}/src/api
     ${CMAKE_SOURCE_DIR}/src/api/third_party
-    ${CMAKE_SOURCE_DIR}/src/gui
+    ${GUI_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}  # For ox_driver.h in root directory
 )
+
+# Link libraries
+target_link_libraries(ox-simulator PRIVATE ${GUI_LIBRARIES})
 
 # Platform-specific settings
 if(WIN32)
     # Windows requires ws2_32 for networking and _WIN32_WINNT definition for ASIO
     target_link_libraries(ox-simulator PRIVATE ws2_32)
     target_compile_definitions(ox-simulator PRIVATE _WIN32_WINNT=0x0601)  # Windows 7+
+elseif(APPLE)
+    # Support macOS 10.13+ for broad compatibility
+    set_target_properties(ox-simulator PROPERTIES
+        OSX_DEPLOYMENT_TARGET "10.13"
+    )
+elseif(UNIX)
+    # Linux requires dl library for dynamic loading
+    target_link_libraries(ox-simulator PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
 # Copy config.json to output directory
