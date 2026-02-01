@@ -39,30 +39,25 @@ bool GuiWindow::Start(SimulatorCore* simulator) {
 
     std::cout << "Initializing GUI window..." << std::endl;
 
-#if defined(__APPLE__)
-    // On macOS, GLFW must be initialized on the main thread
-    // Initialize graphics on this thread (driver initialization thread)
-    if (!InitializeGraphics()) {
-        std::cerr << "Failed to initialize graphics" << std::endl;
-        return false;
-    }
-#endif
-
     running_ = true;
 
     // Start rendering thread
-    try {
+#if defined(__APPLE__)
+    // macOS: MUST run render loop on main thread
+    std::cout << "Starting GUI render loop on main thread (macOS)" << std::endl;
+    RenderLoop();
+    return true;
+#else
+   try {
         render_thread_ = std::thread(&GuiWindow::RenderLoop, this);
         std::cout << "GUI window started successfully" << std::endl;
         return true;
     } catch (const std::exception& e) {
         std::cerr << "GuiWindow::Start: Exception: " << e.what() << std::endl;
-#if defined(__APPLE__)
-        CleanupGraphics();
-#endif
         running_ = false;
         return false;
     }
+#endif
 }
 
 void GuiWindow::Stop() {
@@ -86,18 +81,10 @@ void GuiWindow::Stop() {
 void GuiWindow::RenderLoop() {
     std::cout << "GUI render thread starting..." << std::endl;
 
-#if !defined(__APPLE__)
-    // On Windows/Linux, initialize graphics on this thread
     if (!InitializeGraphics()) {
-        std::cerr << "Failed to initialize graphics in render thread" << std::endl;
+        std::cerr << "Failed to initialize graphics" << std::endl;
         return;
     }
-#endif
-
-#if defined(__APPLE__)
-    // On macOS, window was already created in Start(), transfer context to this thread
-    glfwMakeContextCurrent(window_);
-#endif
 
     if (!window_) {
         std::cerr << "GUI render thread: window is null!" << std::endl;
