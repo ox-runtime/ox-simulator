@@ -6,6 +6,7 @@
 
 #include "config.hpp"
 #include "device_profiles.h"
+#include "frame_data.h"
 #include "gui_window.h"
 #include "http_server.h"
 #include "simulator_core.h"
@@ -25,6 +26,14 @@ static GuiWindow g_gui_window;
 SimulatorConfig g_config;
 const ox_sim::DeviceProfile* g_device_profile = nullptr;
 static bool g_api_enabled = true;  // API enabled state (shared between GUI and driver)
+
+// Global frame data for preview
+static FrameData g_frame_data;
+
+// Implementation of GetFrameData() declared in frame_data.h
+namespace ox_sim {
+FrameData* GetFrameData() { return &g_frame_data; }
+}  // namespace ox_sim
 
 static OxVector3f rotate_vector_by_quat(const OxQuaternion& q, const OxVector3f& v);
 
@@ -219,6 +228,34 @@ static uint32_t simulator_get_interaction_profiles(const char** out_profiles, ui
     return 1;
 }
 
+static void simulator_submit_frame_pixels(uint32_t eye_index, uint32_t width, uint32_t height, uint32_t format,
+                                          const void* pixel_data, uint32_t data_size) {
+    if (eye_index >= 2 || width == 0 || height == 0 || !pixel_data || data_size == 0) {
+        std::cout << "[Driver] submit_frame_pixels: Invalid parameters (eye=" << eye_index << " size=" << width << "x"
+                  << height << " data_size=" << data_size << ")" << std::endl;
+        return;
+    }
+
+    // Store frame data pointers for GUI preview (zero-copy - use shared memory directly)
+    {
+        std::lock_guard<std::mutex> lock(g_frame_data.mutex);
+
+        // Update dimensions on first frame or size change
+        if (g_frame_data.width != width || g_frame_data.height != height) {
+            g_frame_data.width = width;
+            g_frame_data.height = height;
+            std::cout << "[Driver] Frame dimensions set to " << width << "x" << height << std::endl;
+        }
+
+        // Store the shared memory pointer
+        g_frame_data.pixel_data[eye_index] = pixel_data;
+        g_frame_data.data_size[eye_index] = data_size;
+
+        // Mark that new frame is available
+        g_frame_data.has_new_frame.store(true, std::memory_order_release);
+    }
+}
+
 // ===== Driver Registration =====
 
 extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks) {
@@ -238,6 +275,7 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     callbacks->get_input_state_float = simulator_get_input_state_float;
     callbacks->get_input_state_vector2f = simulator_get_input_state_vector2f;
     callbacks->get_interaction_profiles = simulator_get_interaction_profiles;
+    callbacks->submit_frame_pixels = simulator_submit_frame_pixels;
 
     return 1;
 }

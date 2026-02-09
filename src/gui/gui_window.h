@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <string>
 #include <thread>
 
@@ -45,6 +46,12 @@ class GuiWindow {
     // Render component controls
     void RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index);
 
+    // Render frame preview
+    void RenderFramePreview();
+
+    // Update frame preview textures from frame data
+    void UpdateFrameTextures();
+
     SimulatorCore* simulator_;
     const DeviceProfile** device_profile_ptr_;  // Pointer to device profile pointer (for switching)
     bool* api_enabled_;                         // Pointer to API enable state (shared with driver)
@@ -56,6 +63,12 @@ class GuiWindow {
     // UI state
     int selected_device_type_;  // For dropdown
     std::string status_message_;
+
+    // Frame preview textures
+    uint32_t preview_textures_[2];  // OpenGL texture IDs for left and right eye
+    uint32_t preview_width_;
+    uint32_t preview_height_;
+    bool preview_textures_valid_;
 };
 
 }  // namespace ox_sim

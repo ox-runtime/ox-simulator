@@ -10,6 +10,7 @@
 
 // Dear ImGui
 #include "device_profiles.h"
+#include "frame_data.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -29,7 +30,13 @@ GuiWindow::GuiWindow()
       should_stop_(false),
       window_(nullptr),
       selected_device_type_(0),
-      status_message_("Ready") {}
+      status_message_("Ready"),
+      preview_width_(0),
+      preview_height_(0),
+      preview_textures_valid_(false) {
+    preview_textures_[0] = 0;
+    preview_textures_[1] = 0;
+}
 
 GuiWindow::~GuiWindow() { Stop(); }
 
@@ -246,6 +253,9 @@ void GuiWindow::RenderFrame() {
 
     const ImVec2 content_size = ImGui::GetContentRegionAvail();
 
+    // --- Frame Preview ---
+    RenderFramePreview();
+
     // ========== TOP TOOLBAR (Fixed Height) ==========
     const float toolbar_height = 120.0f;
     ImGui::BeginChild("Toolbar", ImVec2(0, toolbar_height), true, ImGuiWindowFlags_NoScrollbar);
@@ -372,6 +382,69 @@ void GuiWindow::RenderFrame() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window_);
+}
+
+void GuiWindow::RenderFramePreview() {
+    // Update preview textures from driver frame data
+    UpdateFrameTextures();
+
+    // Draw preview if available
+    if (preview_textures_valid_ && preview_width_ > 0 && preview_height_ > 0) {
+        ImGui::Text("Frame Preview:");
+        float preview_w = 320.0f;
+        float preview_h = preview_w * (float)preview_height_ / (float)preview_width_;
+        for (int eye = 0; eye < 2; ++eye) {
+            if (preview_textures_[eye]) {
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(preview_w, preview_h));
+                ImGui::SameLine();
+            }
+        }
+        ImGui::NewLine();
+    }
+}
+
+void GuiWindow::UpdateFrameTextures() {
+    FrameData* frame_data = GetFrameData();
+    if (!frame_data) {
+        return;
+    }
+
+    if (!frame_data->has_new_frame.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(frame_data->mutex);
+    uint32_t w = frame_data->width;
+    uint32_t h = frame_data->height;
+
+    if (w == 0 || h == 0) {
+        return;
+    }
+
+    for (int eye = 0; eye < 2; ++eye) {
+        if (!frame_data->pixel_data[eye]) {
+            continue;
+        }
+        size_t expected_size = w * h * 4;
+        if (frame_data->data_size[eye] != expected_size) {
+            continue;
+        }
+
+        if (!preview_textures_[eye]) {
+            glGenTextures(1, &preview_textures_[eye]);
+            glBindTexture(GL_TEXTURE_2D, preview_textures_[eye]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            std::cout << "[GUI] Created OpenGL texture " << preview_textures_[eye] << " for eye " << eye << std::endl;
+        }
+        glBindTexture(GL_TEXTURE_2D, preview_textures_[eye]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, frame_data->pixel_data[eye]);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+    preview_width_ = w;
+    preview_height_ = h;
+    preview_textures_valid_ = true;
+    frame_data->has_new_frame.store(false, std::memory_order_release);
 }
 
 void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width) {
