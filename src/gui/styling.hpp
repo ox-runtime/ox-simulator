@@ -252,7 +252,7 @@ inline void setup_dark_theme_colors(UIColors& colors) {
     colors.accent_active = ImVec4(0.18f, 0.52f, 0.88f, 1.0f);  // Active accent
 
     // ImGui color assignments for dark theme
-    colors.window_bg = colors.base;  // Use base for window bg in dark
+    colors.window_bg = colors.bg;
     colors.child_bg = ImVec4(1.0f, 1.0f, 1.0f, 0.04f);
     colors.frame_bg_active = colors.surface2;
     colors.scrollbar_grab_active = colors.overlay2;
