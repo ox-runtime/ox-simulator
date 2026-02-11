@@ -9,15 +9,36 @@
 // GLFW and OpenGL
 #include <GLFW/glfw3.h>
 
+// Platform-specific includes for dark titlebar
+#ifdef _WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#include <dwmapi.h>
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+#pragma comment(lib, "dwmapi.lib")
+#endif
+
+#ifdef __APPLE__
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3native.h>
+extern "C" void SetDarkTitleBar(GLFWwindow* window);
+#endif
+
+#ifdef __linux__
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#endif
+
 // Dear ImGui
 #include "device_profiles.h"
 #include "frame_data.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-
-// Platform-specific window styling
-#include "platform_styling.h"
 
 namespace ox_sim {
 
@@ -79,9 +100,9 @@ void setup_theme() {
     const ImVec4 warn = ImVec4(0.96f, 0.78f, 0.36f, 1.0f);         // #f4c75c
     const ImVec4 ok = ImVec4(0.40f, 0.74f, 0.40f, 1.0f);           // #66bd66
 
-    // Main window and backgrounds
-    colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);  // Transparent
-    colors[ImGuiCol_ChildBg] = ImVec4(1.0f, 1.0f, 1.0f, 0.04f);  // Translucent white
+    // Main window and backgrounds - uniform dark background
+    colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);  // Solid dark background
+    colors[ImGuiCol_ChildBg] = ImVec4(1.0f, 1.0f, 1.0f, 0.04f);     // Translucent white
     colors[ImGuiCol_PopupBg] = surface0;
     colors[ImGuiCol_Border] = surface1;
     colors[ImGuiCol_BorderShadow] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -314,9 +335,6 @@ bool GuiWindow::InitializeGraphics() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
-    // Enable transparent framebuffer for native backdrop effects
-    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
-
     // Create window with graphics context
     window_ = glfwCreateWindow(1280, 720, "ox simulator", nullptr, nullptr);
     if (window_ == nullptr) {
@@ -325,8 +343,30 @@ bool GuiWindow::InitializeGraphics() {
         return false;
     }
 
-    // Apply platform-specific native window styling (Windows 7+, macOS 10.14+, Linux)
-    PlatformStyling::ApplyNativeWindowStyle(window_);
+    // Apply minimal dark titlebar hints (platform-specific)
+#ifdef _WIN32
+    // Windows: Enable dark mode titlebar (works on Windows 10 1809+)
+    HWND hwnd = glfwGetWin32Window(window_);
+    if (hwnd) {
+        BOOL darkMode = TRUE;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+    }
+#elif defined(__APPLE__)
+    // macOS: Set window appearance to dark (works on macOS 10.14+)
+    SetDarkTitleBar(window_);
+#elif defined(__linux__)
+    // Linux: Set GTK theme variant to dark (hints to window manager)
+    Display* display = glfwGetX11Display();
+    Window x11_window = glfwGetX11Window(window_);
+    if (display && x11_window) {
+        Atom gtk_theme_variant = XInternAtom(display, "_GTK_THEME_VARIANT", False);
+        Atom utf8_string = XInternAtom(display, "UTF8_STRING", False);
+        const char* variant = "dark";
+        XChangeProperty(display, x11_window, gtk_theme_variant, utf8_string, 8, PropModeReplace,
+                        (const unsigned char*)variant, 4);
+        XFlush(display);
+    }
+#endif
 
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);  // Enable vsync
@@ -570,7 +610,8 @@ void GuiWindow::RenderFrame() {
     glfwGetFramebufferSize(window_, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    // Clear with solid dark background (0.05 gray, full opacity)
+    glClearColor(0.08f, 0.08f, 0.08f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

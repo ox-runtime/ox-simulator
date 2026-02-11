@@ -38,36 +38,30 @@ set(IMGUI_SOURCES
 
 # ===== GUI Sources =====
 
-# Platform styling sources
-set(PLATFORM_STYLING_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform_styling.cpp
+set(GUI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/gui_window.cpp
+    ${IMGUI_SOURCES}
 )
 
-# Add Objective-C++ source for macOS
+# Add minimal macOS helper for dark titlebar
 if(APPLE)
-    list(APPEND PLATFORM_STYLING_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/platform_styling_macos.mm
+    list(APPEND GUI_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/dark_titlebar_macos.mm
     )
-    # Enable Objective-C++ for .mm files
     set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/platform_styling_macos.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/dark_titlebar_macos.mm
         PROPERTIES
         COMPILE_FLAGS "-x objective-c++"
     )
 endif()
 
-set(GUI_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/gui_window.cpp
-    ${PLATFORM_STYLING_SOURCES}
-    ${IMGUI_SOURCES}
-    PARENT_SCOPE
-)
+set(GUI_SOURCES ${GUI_SOURCES} PARENT_SCOPE)
 
 set(GUI_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
-    ${glfw_SOURCE_DIR}/include  # For GLFW headers in platform_styling.cpp
+    ${glfw_SOURCE_DIR}/include
     PARENT_SCOPE
 )
 
@@ -76,9 +70,8 @@ set(GUI_LIBRARIES
     glfw
     OpenGL::GL
 )
-set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 
-# Platform-specific GUI libraries
+# Platform-specific GUI libraries (required by GLFW)
 if(APPLE)
     find_library(COCOA_LIBRARY Cocoa REQUIRED)
     find_library(IOKIT_LIBRARY IOKit REQUIRED)
@@ -88,15 +81,15 @@ if(APPLE)
         ${IOKIT_LIBRARY}
         ${COREVIDEO_LIBRARY}
     )
-    set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 elseif(WIN32)
+    # Windows: dwmapi for dark titlebar
     list(APPEND GUI_LIBRARIES dwmapi)
-    set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 elseif(UNIX)
-    # Linux: Add X11 for native window manager integration
+    # Linux: X11 required by GLFW
     find_package(X11)
     if(X11_FOUND)
         list(APPEND GUI_LIBRARIES ${X11_LIBRARIES})
     endif()
-    set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 endif()
+
+set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
