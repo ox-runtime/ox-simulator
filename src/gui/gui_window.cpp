@@ -134,10 +134,10 @@ struct UIColors {
     ImVec4 modal_window_dim_bg;
 };
 
-UIColors current_colors;
+UIColors theme_colors;
 
 // Detect if system is in dark mode (cross-platform)
-bool IsSystemDarkMode() {
+bool is_system_dark_mode() {
 #ifdef _WIN32
     // Windows 10+: Check registry for system theme
     HKEY hKey;
@@ -177,87 +177,169 @@ bool IsSystemDarkMode() {
     return false;
 }
 
-void setup_dark_theme() {
+void setup_dark_theme_colors(UIColors& colors) {
+    colors.base = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);         // #2E2E2E
+    colors.mantle = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);       // #262626
+    colors.surface0 = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);     // #0D0D0D
+    colors.surface1 = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);     // #404040
+    colors.surface2 = ImVec4(0.29f, 0.29f, 0.29f, 1.0f);     // #4A4A4A
+    colors.overlay0 = ImVec4(0.40f, 0.40f, 0.40f, 1.0f);     // #666666
+    colors.overlay2 = ImVec4(0.55f, 0.55f, 0.55f, 1.0f);     // #8C8C8C
+    colors.text = ImVec4(0.86f, 0.86f, 0.86f, 1.0f);         // #DBDBDB
+    colors.subtext0 = ImVec4(0.72f, 0.72f, 0.72f, 1.0f);     // #B8B8B8
+    colors.accent = ImVec4(0.26f, 0.62f, 0.95f, 1.0f);       // #429EF2
+    colors.accent_soft = ImVec4(0.20f, 0.48f, 0.78f, 1.0f);  // #337AC7
+    colors.warn = ImVec4(0.96f, 0.78f, 0.36f, 1.0f);         // #F5C75C
+    colors.ok = ImVec4(0.40f, 0.74f, 0.40f, 1.0f);           // #66BD66
+
+    // Dark theme equivalents for light theme fields
+    colors.bg = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);             // Dark background
+    colors.surface = colors.surface0;                          // Use surface0 for surface in dark theme
+    colors.border = colors.surface1;                           // Use surface1 for border in dark theme
+    colors.text_dim = ImVec4(0.55f, 0.55f, 0.55f, 1.0f);       // Dim text
+    colors.accent_hover = ImVec4(0.30f, 0.68f, 0.98f, 1.0f);   // Lighter accent
+    colors.accent_active = ImVec4(0.18f, 0.52f, 0.88f, 1.0f);  // Active accent
+
+    // ImGui color assignments for dark theme
+    colors.window_bg = colors.base;  // Use base for window bg in dark
+    colors.child_bg = ImVec4(1.0f, 1.0f, 1.0f, 0.04f);
+    colors.frame_bg_active = colors.surface2;
+    colors.scrollbar_grab_active = colors.overlay2;
+    colors.button_active = colors.overlay0;
+    colors.header_active = colors.surface2;
+    colors.separator_hovered = colors.overlay0;
+    colors.separator_active = colors.overlay2;
+    colors.resize_grip_active = colors.overlay2;
+    colors.table_row_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    colors.table_row_bg_alt = ImVec4(1.0f, 1.0f, 1.0f, 0.06f);
+    colors.text_selected_bg = colors.overlay0;
+    colors.nav_windowing_highlight = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+    colors.nav_windowing_dim_bg = ImVec4(0.8f, 0.8f, 0.8f, 0.2f);
+    colors.modal_window_dim_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.35f);
+
+    // Set UI colors for dark theme
+    colors.background_color = colors.bg;
+    colors.header_color = colors.accent;
+    colors.device_info_color = ImVec4(0.8f, 0.9f, 0.8f, 1.0f);  // Light green for device info
+    colors.status_color = colors.ok;
+    colors.device_label_color = colors.accent_soft;
+    colors.user_path_color = colors.subtext0;
+    colors.always_active_color = colors.ok;
+    colors.section_header_color = colors.warn;
+    colors.api_port_color = colors.subtext0;
+}
+
+void setup_light_theme_colors(UIColors& colors) {
+    colors.bg = ImVec4(0.95f, 0.95f, 0.96f, 1.0f);             // #F2F2F5
+    colors.surface = ImVec4(0.98f, 0.98f, 0.99f, 1.0f);        // #FAFAFC
+    colors.surface1 = ImVec4(0.92f, 0.92f, 0.94f, 1.0f);       // #EBEBF0
+    colors.surface2 = ImVec4(0.88f, 0.88f, 0.90f, 1.0f);       // #E0E0E6
+    colors.border = ImVec4(0.75f, 0.75f, 0.78f, 1.0f);         // #BFBFC7
+    colors.text = ImVec4(0.15f, 0.15f, 0.18f, 1.0f);           // #26262E
+    colors.text_dim = ImVec4(0.45f, 0.45f, 0.48f, 1.0f);       // #73737A
+    colors.accent = ImVec4(0.20f, 0.50f, 0.88f, 1.0f);         // #3380E0
+    colors.accent_hover = ImVec4(0.28f, 0.58f, 0.92f, 1.0f);   // #4794EB
+    colors.accent_active = ImVec4(0.15f, 0.42f, 0.80f, 1.0f);  // #266BCC
+    colors.warn = ImVec4(0.90f, 0.65f, 0.20f, 1.0f);           // #E6A633
+    colors.ok = ImVec4(0.28f, 0.68f, 0.35f, 1.0f);             // #47AD59
+
+    // ImGui color assignments for light theme
+    colors.window_bg = colors.bg;
+    colors.child_bg = colors.surface;
+    colors.frame_bg_active = colors.surface2;
+    colors.scrollbar_grab_active = ImVec4(0.70f, 0.70f, 0.73f, 1.0f);
+    colors.button_active = ImVec4(0.82f, 0.82f, 0.85f, 1.0f);
+    colors.header_active = ImVec4(0.85f, 0.85f, 0.88f, 1.0f);
+    colors.separator_hovered = ImVec4(0.65f, 0.65f, 0.70f, 1.0f);
+    colors.separator_active = ImVec4(0.55f, 0.55f, 0.60f, 1.0f);
+    colors.resize_grip_active = ImVec4(0.70f, 0.70f, 0.73f, 1.0f);
+    colors.table_row_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    colors.table_row_bg_alt = ImVec4(0.0f, 0.0f, 0.0f, 0.03f);
+    colors.text_selected_bg = ImVec4(0.20f, 0.50f, 0.88f, 0.35f);
+    colors.nav_windowing_highlight = ImVec4(0.15f, 0.15f, 0.18f, 0.7f);
+    colors.nav_windowing_dim_bg = ImVec4(0.2f, 0.2f, 0.2f, 0.2f);
+    colors.modal_window_dim_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.35f);
+
+    // Set UI colors for light theme
+    colors.background_color = colors.bg;
+    colors.header_color = colors.accent;
+    colors.device_info_color = ImVec4(0.2f, 0.4f, 0.2f, 1.0f);  // Light green for device info
+    colors.status_color = colors.ok;
+    colors.device_label_color = colors.accent_hover;
+    colors.user_path_color = colors.text_dim;
+    colors.always_active_color = colors.ok;
+    colors.section_header_color = colors.warn;
+    colors.api_port_color = colors.text_dim;
+}
+
+void setup_theme_colors(UIColors& colors) {
+    if (is_system_dark_mode()) {
+        setup_dark_theme_colors(colors);
+    } else {
+        setup_light_theme_colors(colors);
+    }
+}
+
+void setup_theme_styling() {
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
 
-    current_colors.base = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);         // #2E2E2E
-    current_colors.mantle = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);       // #262626
-    current_colors.surface0 = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);     // #0D0D0D
-    current_colors.surface1 = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);     // #404040
-    current_colors.surface2 = ImVec4(0.29f, 0.29f, 0.29f, 1.0f);     // #4A4A4A
-    current_colors.overlay0 = ImVec4(0.40f, 0.40f, 0.40f, 1.0f);     // #666666
-    current_colors.overlay2 = ImVec4(0.55f, 0.55f, 0.55f, 1.0f);     // #8C8C8C
-    current_colors.text = ImVec4(0.86f, 0.86f, 0.86f, 1.0f);         // #DBDBDB
-    current_colors.subtext0 = ImVec4(0.72f, 0.72f, 0.72f, 1.0f);     // #B8B8B8
-    current_colors.accent = ImVec4(0.26f, 0.62f, 0.95f, 1.0f);       // #429EF2
-    current_colors.accent_soft = ImVec4(0.20f, 0.48f, 0.78f, 1.0f);  // #337AC7
-    current_colors.warn = ImVec4(0.96f, 0.78f, 0.36f, 1.0f);         // #F5C75C
-    current_colors.ok = ImVec4(0.40f, 0.74f, 0.40f, 1.0f);           // #66BD66
+    bool is_light = theme_colors.bg.x > 0.5f;
 
-    current_colors.window_bg = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-    current_colors.child_bg = ImVec4(1.0f, 1.0f, 1.0f, 0.04f);
-    current_colors.border_shadow = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    current_colors.table_row_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    current_colors.table_row_bg_alt = ImVec4(1.0f, 1.0f, 1.0f, 0.06f);
-    current_colors.text_selected_bg = current_colors.overlay0;
-    current_colors.nav_windowing_highlight = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-    current_colors.nav_windowing_dim_bg = ImVec4(0.8f, 0.8f, 0.8f, 0.2f);
-    current_colors.modal_window_dim_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.35f);
-
-    colors[ImGuiCol_WindowBg] = current_colors.window_bg;
-    colors[ImGuiCol_ChildBg] = current_colors.child_bg;
-    colors[ImGuiCol_PopupBg] = current_colors.surface0;
-    colors[ImGuiCol_Border] = current_colors.surface1;
-    colors[ImGuiCol_BorderShadow] = current_colors.border_shadow;
-    colors[ImGuiCol_FrameBg] = current_colors.surface0;
-    colors[ImGuiCol_FrameBgHovered] = current_colors.surface1;
-    colors[ImGuiCol_FrameBgActive] = current_colors.surface2;
-    colors[ImGuiCol_TitleBg] = current_colors.mantle;
-    colors[ImGuiCol_TitleBgActive] = current_colors.surface0;
-    colors[ImGuiCol_TitleBgCollapsed] = current_colors.mantle;
-    colors[ImGuiCol_MenuBarBg] = current_colors.mantle;
-    colors[ImGuiCol_ScrollbarBg] = current_colors.surface0;
-    colors[ImGuiCol_ScrollbarGrab] = current_colors.surface2;
-    colors[ImGuiCol_ScrollbarGrabHovered] = current_colors.overlay0;
-    colors[ImGuiCol_ScrollbarGrabActive] = current_colors.overlay2;
-    colors[ImGuiCol_CheckMark] = current_colors.ok;
-    colors[ImGuiCol_SliderGrab] = current_colors.accent_soft;
-    colors[ImGuiCol_SliderGrabActive] = current_colors.accent;
-    colors[ImGuiCol_Button] = current_colors.surface1;
-    colors[ImGuiCol_ButtonHovered] = current_colors.surface2;
-    colors[ImGuiCol_ButtonActive] = current_colors.overlay0;
-    colors[ImGuiCol_Header] = current_colors.surface0;
-    colors[ImGuiCol_HeaderHovered] = current_colors.surface1;
-    colors[ImGuiCol_HeaderActive] = current_colors.surface2;
-    colors[ImGuiCol_Separator] = current_colors.surface1;
-    colors[ImGuiCol_SeparatorHovered] = current_colors.overlay0;
-    colors[ImGuiCol_SeparatorActive] = current_colors.overlay2;
-    colors[ImGuiCol_ResizeGrip] = current_colors.surface2;
-    colors[ImGuiCol_ResizeGripHovered] = current_colors.overlay0;
-    colors[ImGuiCol_ResizeGripActive] = current_colors.overlay2;
-    colors[ImGuiCol_Tab] = current_colors.surface0;
-    colors[ImGuiCol_TabHovered] = current_colors.surface2;
-    colors[ImGuiCol_TabActive] = current_colors.surface1;
-    colors[ImGuiCol_TabUnfocused] = current_colors.surface0;
-    colors[ImGuiCol_TabUnfocusedActive] = current_colors.surface1;
-    colors[ImGuiCol_PlotLines] = current_colors.accent;
-    colors[ImGuiCol_PlotLinesHovered] = current_colors.warn;
-    colors[ImGuiCol_PlotHistogram] = current_colors.accent_soft;
-    colors[ImGuiCol_PlotHistogramHovered] = current_colors.ok;
-    colors[ImGuiCol_TableHeaderBg] = current_colors.surface0;
-    colors[ImGuiCol_TableBorderStrong] = current_colors.surface1;
-    colors[ImGuiCol_TableBorderLight] = current_colors.surface0;
-    colors[ImGuiCol_TableRowBg] = current_colors.table_row_bg;
-    colors[ImGuiCol_TableRowBgAlt] = current_colors.table_row_bg_alt;
-    colors[ImGuiCol_TextSelectedBg] = current_colors.text_selected_bg;
-    colors[ImGuiCol_DragDropTarget] = current_colors.warn;
-    colors[ImGuiCol_NavHighlight] = current_colors.accent;
-    colors[ImGuiCol_NavWindowingHighlight] = current_colors.nav_windowing_highlight;
-    colors[ImGuiCol_NavWindowingDimBg] = current_colors.nav_windowing_dim_bg;
-    colors[ImGuiCol_ModalWindowDimBg] = current_colors.modal_window_dim_bg;
-    colors[ImGuiCol_Text] = current_colors.text;
-    colors[ImGuiCol_TextDisabled] = current_colors.subtext0;
+    // Assign theme colors to ImGui
+    colors[ImGuiCol_WindowBg] = theme_colors.window_bg;
+    colors[ImGuiCol_ChildBg] = theme_colors.child_bg;
+    colors[ImGuiCol_PopupBg] = theme_colors.surface;
+    colors[ImGuiCol_Border] = theme_colors.border;
+    colors[ImGuiCol_BorderShadow] = theme_colors.border_shadow;
+    colors[ImGuiCol_FrameBg] = theme_colors.surface1;
+    colors[ImGuiCol_FrameBgHovered] = theme_colors.surface2;
+    colors[ImGuiCol_FrameBgActive] = theme_colors.frame_bg_active;
+    colors[ImGuiCol_TitleBg] = theme_colors.mantle;
+    colors[ImGuiCol_TitleBgActive] = theme_colors.surface0;
+    colors[ImGuiCol_TitleBgCollapsed] = theme_colors.mantle;
+    colors[ImGuiCol_MenuBarBg] = theme_colors.mantle;
+    colors[ImGuiCol_ScrollbarBg] = theme_colors.surface;
+    colors[ImGuiCol_ScrollbarGrab] = theme_colors.surface2;
+    colors[ImGuiCol_ScrollbarGrabHovered] = is_light ? theme_colors.border : theme_colors.overlay0;
+    colors[ImGuiCol_ScrollbarGrabActive] = theme_colors.scrollbar_grab_active;
+    colors[ImGuiCol_CheckMark] = theme_colors.ok;
+    colors[ImGuiCol_SliderGrab] = theme_colors.accent_soft;
+    colors[ImGuiCol_SliderGrabActive] = theme_colors.accent;
+    colors[ImGuiCol_Button] = theme_colors.surface1;
+    colors[ImGuiCol_ButtonHovered] = theme_colors.surface2;
+    colors[ImGuiCol_ButtonActive] = is_light ? theme_colors.button_active : theme_colors.overlay0;
+    colors[ImGuiCol_Header] = theme_colors.surface1;
+    colors[ImGuiCol_HeaderHovered] = theme_colors.surface2;
+    colors[ImGuiCol_HeaderActive] = theme_colors.header_active;
+    colors[ImGuiCol_Separator] = is_light ? theme_colors.border : theme_colors.surface1;
+    colors[ImGuiCol_SeparatorHovered] = is_light ? theme_colors.separator_hovered : theme_colors.overlay0;
+    colors[ImGuiCol_SeparatorActive] = is_light ? theme_colors.separator_active : theme_colors.overlay2;
+    colors[ImGuiCol_ResizeGrip] = theme_colors.surface2;
+    colors[ImGuiCol_ResizeGripHovered] = is_light ? theme_colors.border : theme_colors.overlay0;
+    colors[ImGuiCol_ResizeGripActive] = is_light ? theme_colors.resize_grip_active : theme_colors.overlay2;
+    colors[ImGuiCol_Tab] = is_light ? theme_colors.surface1 : theme_colors.surface0;
+    colors[ImGuiCol_TabHovered] = theme_colors.surface2;
+    colors[ImGuiCol_TabActive] = is_light ? theme_colors.bg : theme_colors.surface1;
+    colors[ImGuiCol_TabUnfocused] = is_light ? theme_colors.surface1 : theme_colors.surface0;
+    colors[ImGuiCol_TabUnfocusedActive] = is_light ? theme_colors.surface2 : theme_colors.surface1;
+    colors[ImGuiCol_PlotLines] = theme_colors.accent;
+    colors[ImGuiCol_PlotLinesHovered] = theme_colors.warn;
+    colors[ImGuiCol_PlotHistogram] = theme_colors.accent_soft;
+    colors[ImGuiCol_PlotHistogramHovered] = theme_colors.ok;
+    colors[ImGuiCol_TableHeaderBg] = theme_colors.surface1;
+    colors[ImGuiCol_TableBorderStrong] = theme_colors.border;
+    colors[ImGuiCol_TableBorderLight] = is_light ? theme_colors.surface2 : theme_colors.surface0;
+    colors[ImGuiCol_TableRowBg] = theme_colors.table_row_bg;
+    colors[ImGuiCol_TableRowBgAlt] = theme_colors.table_row_bg_alt;
+    colors[ImGuiCol_TextSelectedBg] = theme_colors.text_selected_bg;
+    colors[ImGuiCol_DragDropTarget] = theme_colors.warn;
+    colors[ImGuiCol_NavHighlight] = theme_colors.accent;
+    colors[ImGuiCol_NavWindowingHighlight] = theme_colors.nav_windowing_highlight;
+    colors[ImGuiCol_NavWindowingDimBg] = theme_colors.nav_windowing_dim_bg;
+    colors[ImGuiCol_ModalWindowDimBg] = theme_colors.modal_window_dim_bg;
+    colors[ImGuiCol_Text] = theme_colors.text;
+    colors[ImGuiCol_TextDisabled] = theme_colors.subtext0;
 
     // Rounded corners
     style.WindowRounding = 4.0f;
@@ -286,143 +368,11 @@ void setup_dark_theme() {
 
     style.AntiAliasedLines = true;
     style.AntiAliasedFill = true;
-
-    // Set UI colors for dark theme
-    current_colors.background_color = current_colors.bg;
-    current_colors.header_color = current_colors.accent;
-    current_colors.device_info_color = ImVec4(0.8f, 0.9f, 0.8f, 1.0f);  // Light green for device info
-    current_colors.status_color = current_colors.ok;
-    current_colors.device_label_color = current_colors.accent_soft;
-    current_colors.user_path_color = current_colors.subtext0;
-    current_colors.always_active_color = current_colors.ok;
-    current_colors.section_header_color = current_colors.warn;
-    current_colors.api_port_color = current_colors.subtext0;
 }
 
-void setup_light_theme() {
-    ImGuiStyle& style = ImGui::GetStyle();
-    ImVec4* colors = style.Colors;
-
-    current_colors.bg = ImVec4(0.95f, 0.95f, 0.96f, 1.0f);             // #F2F2F5
-    current_colors.surface = ImVec4(0.98f, 0.98f, 0.99f, 1.0f);        // #FAFAFC
-    current_colors.surface1 = ImVec4(0.92f, 0.92f, 0.94f, 1.0f);       // #EBEBF0
-    current_colors.surface2 = ImVec4(0.88f, 0.88f, 0.90f, 1.0f);       // #E0E0E6
-    current_colors.border = ImVec4(0.75f, 0.75f, 0.78f, 1.0f);         // #BFBFC7
-    current_colors.text = ImVec4(0.15f, 0.15f, 0.18f, 1.0f);           // #26262E
-    current_colors.text_dim = ImVec4(0.45f, 0.45f, 0.48f, 1.0f);       // #73737A
-    current_colors.accent = ImVec4(0.20f, 0.50f, 0.88f, 1.0f);         // #3380E0
-    current_colors.accent_hover = ImVec4(0.28f, 0.58f, 0.92f, 1.0f);   // #4794EB
-    current_colors.accent_active = ImVec4(0.15f, 0.42f, 0.80f, 1.0f);  // #266BCC
-    current_colors.warn = ImVec4(0.90f, 0.65f, 0.20f, 1.0f);           // #E6A633
-    current_colors.ok = ImVec4(0.28f, 0.68f, 0.35f, 1.0f);             // #47AD59
-
-    current_colors.border_shadow = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    current_colors.frame_bg_active = ImVec4(0.85f, 0.85f, 0.88f, 1.0f);
-    current_colors.scrollbar_grab_active = ImVec4(0.70f, 0.70f, 0.73f, 1.0f);
-    current_colors.button_active = ImVec4(0.82f, 0.82f, 0.85f, 1.0f);
-    current_colors.header_active = ImVec4(0.85f, 0.85f, 0.88f, 1.0f);
-    current_colors.separator_hovered = ImVec4(0.65f, 0.65f, 0.70f, 1.0f);
-    current_colors.separator_active = ImVec4(0.55f, 0.55f, 0.60f, 1.0f);
-    current_colors.resize_grip_active = ImVec4(0.70f, 0.70f, 0.73f, 1.0f);
-    current_colors.table_row_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-    current_colors.table_row_bg_alt = ImVec4(0.0f, 0.0f, 0.0f, 0.03f);
-    current_colors.text_selected_bg = ImVec4(0.20f, 0.50f, 0.88f, 0.35f);
-    current_colors.nav_windowing_highlight = ImVec4(0.15f, 0.15f, 0.18f, 0.7f);
-    current_colors.nav_windowing_dim_bg = ImVec4(0.2f, 0.2f, 0.2f, 0.2f);
-    current_colors.modal_window_dim_bg = ImVec4(0.0f, 0.0f, 0.0f, 0.35f);
-
-    colors[ImGuiCol_WindowBg] = current_colors.bg;
-    colors[ImGuiCol_ChildBg] = current_colors.surface;
-    colors[ImGuiCol_PopupBg] = current_colors.surface;
-    colors[ImGuiCol_Border] = current_colors.border;
-    colors[ImGuiCol_BorderShadow] = current_colors.border_shadow;
-    colors[ImGuiCol_FrameBg] = current_colors.surface1;
-    colors[ImGuiCol_FrameBgHovered] = current_colors.surface2;
-    colors[ImGuiCol_FrameBgActive] = current_colors.frame_bg_active;
-    colors[ImGuiCol_TitleBg] = current_colors.surface1;
-    colors[ImGuiCol_TitleBgActive] = current_colors.surface2;
-    colors[ImGuiCol_TitleBgCollapsed] = current_colors.surface1;
-    colors[ImGuiCol_MenuBarBg] = current_colors.surface1;
-    colors[ImGuiCol_ScrollbarBg] = current_colors.surface;
-    colors[ImGuiCol_ScrollbarGrab] = current_colors.surface2;
-    colors[ImGuiCol_ScrollbarGrabHovered] = current_colors.border;
-    colors[ImGuiCol_ScrollbarGrabActive] = current_colors.scrollbar_grab_active;
-    colors[ImGuiCol_CheckMark] = current_colors.ok;
-    colors[ImGuiCol_SliderGrab] = current_colors.accent;
-    colors[ImGuiCol_SliderGrabActive] = current_colors.accent_active;
-    colors[ImGuiCol_Button] = current_colors.surface1;
-    colors[ImGuiCol_ButtonHovered] = current_colors.surface2;
-    colors[ImGuiCol_ButtonActive] = current_colors.button_active;
-    colors[ImGuiCol_Header] = current_colors.surface1;
-    colors[ImGuiCol_HeaderHovered] = current_colors.surface2;
-    colors[ImGuiCol_HeaderActive] = current_colors.header_active;
-    colors[ImGuiCol_Separator] = current_colors.border;
-    colors[ImGuiCol_SeparatorHovered] = current_colors.separator_hovered;
-    colors[ImGuiCol_SeparatorActive] = current_colors.separator_active;
-    colors[ImGuiCol_ResizeGrip] = current_colors.surface2;
-    colors[ImGuiCol_ResizeGripHovered] = current_colors.border;
-    colors[ImGuiCol_ResizeGripActive] = current_colors.resize_grip_active;
-    colors[ImGuiCol_Tab] = current_colors.surface1;
-    colors[ImGuiCol_TabHovered] = current_colors.surface2;
-    colors[ImGuiCol_TabActive] = current_colors.bg;
-    colors[ImGuiCol_TabUnfocused] = current_colors.surface1;
-    colors[ImGuiCol_TabUnfocusedActive] = current_colors.surface2;
-    colors[ImGuiCol_PlotLines] = current_colors.accent;
-    colors[ImGuiCol_PlotLinesHovered] = current_colors.warn;
-    colors[ImGuiCol_PlotHistogram] = current_colors.accent;
-    colors[ImGuiCol_PlotHistogramHovered] = current_colors.ok;
-    colors[ImGuiCol_TableHeaderBg] = current_colors.surface1;
-    colors[ImGuiCol_TableBorderStrong] = current_colors.border;
-    colors[ImGuiCol_TableBorderLight] = current_colors.surface2;
-    colors[ImGuiCol_TableRowBg] = current_colors.table_row_bg;
-    colors[ImGuiCol_TableRowBgAlt] = current_colors.table_row_bg_alt;
-    colors[ImGuiCol_TextSelectedBg] = current_colors.text_selected_bg;
-    colors[ImGuiCol_DragDropTarget] = current_colors.warn;
-    colors[ImGuiCol_NavHighlight] = current_colors.accent;
-    colors[ImGuiCol_NavWindowingHighlight] = current_colors.nav_windowing_highlight;
-    colors[ImGuiCol_NavWindowingDimBg] = current_colors.nav_windowing_dim_bg;
-    colors[ImGuiCol_ModalWindowDimBg] = current_colors.modal_window_dim_bg;
-    colors[ImGuiCol_Text] = current_colors.text;
-    colors[ImGuiCol_TextDisabled] = current_colors.text_dim;
-
-    // Rounded corners
-    style.WindowRounding = 4.0f;
-    style.ChildRounding = 5.0f;
-    style.FrameRounding = 3.0f;
-    style.PopupRounding = 3.0f;
-    style.ScrollbarRounding = 6.0f;
-    style.GrabRounding = 3.0f;
-    style.TabRounding = 3.0f;
-
-    // Padding and spacing
-    style.WindowPadding = ImVec2(10.0f, 10.0f);
-    style.FramePadding = ImVec2(6.0f, 4.0f);
-    style.ItemSpacing = ImVec2(10.0f, 6.0f);
-    style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
-    style.IndentSpacing = 18.0f;
-    style.ScrollbarSize = 14.0f;
-    style.GrabMinSize = 10.0f;
-
-    // Borders
-    style.WindowBorderSize = 0.0f;
-    style.ChildBorderSize = 1.0f;
-    style.PopupBorderSize = 1.0f;
-    style.FrameBorderSize = 1.0f;
-    style.TabBorderSize = 0.0f;
-
-    style.AntiAliasedLines = true;
-    style.AntiAliasedFill = true;
-
-    // Set UI colors for light theme
-    current_colors.background_color = current_colors.bg;
-    current_colors.header_color = current_colors.accent;
-    current_colors.device_info_color = ImVec4(0.2f, 0.4f, 0.2f, 1.0f);  // Light green for device info
-    current_colors.status_color = current_colors.ok;
-    current_colors.device_label_color = current_colors.accent_hover;
-    current_colors.user_path_color = current_colors.text_dim;
-    current_colors.always_active_color = current_colors.ok;
-    current_colors.section_header_color = current_colors.warn;
-    current_colors.api_port_color = current_colors.text_dim;
+void setup_theme() {
+    setup_theme_colors(theme_colors);
+    setup_theme_styling();
 }
 
 // GLFW error callback
@@ -585,7 +535,7 @@ bool GuiWindow::InitializeGraphics() {
     }
 
     // Detect system dark mode and apply matching titlebar
-    bool dark_mode = IsSystemDarkMode();
+    bool dark_mode = is_system_dark_mode();
 
 #ifdef _WIN32
     // Windows: Set titlebar to match system theme (works on Windows 10 1809+)
@@ -621,11 +571,7 @@ bool GuiWindow::InitializeGraphics() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
     // Apply appropriate theme based on detected dark mode
-    if (dark_mode) {
-        setup_dark_theme();
-    } else {
-        setup_light_theme();
-    }
+    setup_theme();
 
     // Load platform-specific Arial-like font
     std::string font_path = GetFontPath();
@@ -746,7 +692,7 @@ void GuiWindow::RenderFrame() {
 
     // Header
     ImGui::PushFont(ImGui::GetFont());
-    ImGui::TextColored(current_colors.header_color, "Device");
+    ImGui::TextColored(theme_colors.header_color, "Device");
     ImGui::PopFont();
     ImGui::Separator();
 
@@ -767,7 +713,7 @@ void GuiWindow::RenderFrame() {
         ImGui::SetTooltip("Toggle HTTP API state (Note: Server restart required for changes to take effect)");
     }
     ImGui::SameLine();
-    ImGui::TextColored(current_colors.api_port_color, "(Port: 8765)");
+    ImGui::TextColored(theme_colors.api_port_color, "(Port: 8765)");
 
     ImGui::NextColumn();
 
@@ -795,14 +741,14 @@ void GuiWindow::RenderFrame() {
     // Second row: Device Information and Status
     if (*device_profile_ptr_) {
         const DeviceProfile* profile = *device_profile_ptr_;
-        ImGui::TextColored(current_colors.device_info_color, "Device: %s", profile->name);
+        ImGui::TextColored(theme_colors.device_info_color, "Device: %s", profile->name);
         ImGui::SameLine(300);
         ImGui::Text("Manufacturer: %s", profile->manufacturer);
         ImGui::SameLine(600);
         ImGui::Text("Display: %dx%d @ %.0f Hz", profile->display_width, profile->display_height, profile->refresh_rate);
     }
 
-    ImGui::TextColored(current_colors.status_color, "Status: %s", status_message_.c_str());
+    ImGui::TextColored(theme_colors.status_color, "Status: %s", status_message_.c_str());
 
     ImGui::EndChild();
 
@@ -858,8 +804,8 @@ void GuiWindow::RenderFrame() {
     glViewport(0, 0, display_w, display_h);
 
     // Clear with solid background
-    glClearColor(current_colors.background_color.x, current_colors.background_color.y,
-                 current_colors.background_color.z, current_colors.background_color.w);
+    glClearColor(theme_colors.background_color.x, theme_colors.background_color.y, theme_colors.background_color.z,
+                 theme_colors.background_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -940,9 +886,9 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
 
     // Device header
     std::string device_label = std::string(device.role);
-    ImGui::TextColored(current_colors.device_label_color, "%s", device_label.c_str());
+    ImGui::TextColored(theme_colors.device_label_color, "%s", device_label.c_str());
     ImGui::SameLine();
-    ImGui::TextColored(current_colors.user_path_color, "(%s)", device.user_path);
+    ImGui::TextColored(theme_colors.user_path_color, "(%s)", device.user_path);
     ImGui::Separator();
 
     // === Active State ===
@@ -959,7 +905,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
             ImGui::SetTooltip("Enable/disable device tracking");
         }
     } else {
-        ImGui::TextColored(current_colors.always_active_color, "Active: Always On");
+        ImGui::TextColored(theme_colors.always_active_color, "Active: Always On");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("This device is always active");
         }
@@ -969,7 +915,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::Separator();
 
     // === Pose Controls (Always Visible) ===
-    ImGui::TextColored(current_colors.section_header_color, "Pose");
+    ImGui::TextColored(theme_colors.section_header_color, "Pose");
     ImGui::Spacing();
 
     // Position
@@ -1036,7 +982,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     if (!device.components.empty()) {
         ImGui::Spacing();
         ImGui::Separator();
-        ImGui::TextColored(current_colors.section_header_color, "Input Components");
+        ImGui::TextColored(theme_colors.section_header_color, "Input Components");
         ImGui::Spacing();
 
         for (const auto& component : device.components) {
