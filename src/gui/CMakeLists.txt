@@ -46,10 +46,10 @@ set(GUI_SOURCES
 # Add minimal macOS helper for dark titlebar
 if(APPLE)
     list(APPEND GUI_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/dark_titlebar_macos.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/styling.mm
     )
     set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/dark_titlebar_macos.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/styling.mm
         PROPERTIES
         COMPILE_FLAGS "-x objective-c++"
     )
