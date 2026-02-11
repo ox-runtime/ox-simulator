@@ -7,29 +7,7 @@
 #include <thread>
 
 // GLFW and OpenGL
-#ifdef _WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
-#endif
-#ifdef __APPLE__
-#define GLFW_EXPOSE_NATIVE_COCOA
-#endif
 #include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
-
-// Windows dark mode support
-#ifdef _WIN32
-#include <dwmapi.h>
-#pragma comment(lib, "dwmapi.lib")
-
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
-
-#ifndef DWMWA_SYSTEMBACKDROP_TYPE
-#define DWMWA_SYSTEMBACKDROP_TYPE 38
-#endif
-
-#endif
 
 // Dear ImGui
 #include "device_profiles.h"
@@ -37,6 +15,9 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+// Platform-specific window styling
+#include "platform_styling.h"
 
 namespace ox_sim {
 
@@ -344,21 +325,8 @@ bool GuiWindow::InitializeGraphics() {
         return false;
     }
 
-#ifdef _WIN32
-    // Enable dark mode for the title bar on Windows
-    BOOL darkMode = TRUE;
-    DwmSetWindowAttribute(glfwGetWin32Window(window_), DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
-
-    // Enable Mica backdrop effect for modern Windows look
-    int backdropType = 2;  // DWMSBT_MAINWINDOW
-    DwmSetWindowAttribute(glfwGetWin32Window(window_), DWMWA_SYSTEMBACKDROP_TYPE, &backdropType, sizeof(backdropType));
-#endif
-
-#ifdef __APPLE__
-    // TODO: Enable vibrancy effect on macOS for native look
-    // This requires accessing NSWindow via glfwGetCocoaWindow and setting NSVisualEffectView
-    // Implementation needs Objective-C++ (.mm file) or separate implementation
-#endif
+    // Apply platform-specific native window styling (Windows 7+, macOS 10.14+, Linux)
+    PlatformStyling::ApplyNativeWindowStyle(window_);
 
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);  // Enable vsync

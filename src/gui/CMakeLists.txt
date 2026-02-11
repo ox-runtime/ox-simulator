@@ -38,8 +38,27 @@ set(IMGUI_SOURCES
 
 # ===== GUI Sources =====
 
+# Platform styling sources
+set(PLATFORM_STYLING_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform_styling.cpp
+)
+
+# Add Objective-C++ source for macOS
+if(APPLE)
+    list(APPEND PLATFORM_STYLING_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/platform_styling_macos.mm
+    )
+    # Enable Objective-C++ for .mm files
+    set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/platform_styling_macos.mm
+        PROPERTIES
+        COMPILE_FLAGS "-x objective-c++"
+    )
+endif()
+
 set(GUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/gui_window.cpp
+    ${PLATFORM_STYLING_SOURCES}
     ${IMGUI_SOURCES}
     PARENT_SCOPE
 )
@@ -48,6 +67,7 @@ set(GUI_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
+    ${glfw_SOURCE_DIR}/include  # For GLFW headers in platform_styling.cpp
     PARENT_SCOPE
 )
 
@@ -55,8 +75,8 @@ set(GUI_INCLUDE_DIRS
 set(GUI_LIBRARIES
     glfw
     OpenGL::GL
-    PARENT_SCOPE
 )
+set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 
 # Platform-specific GUI libraries
 if(APPLE)
@@ -68,6 +88,15 @@ if(APPLE)
         ${IOKIT_LIBRARY}
         ${COREVIDEO_LIBRARY}
     )
+    set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 elseif(WIN32)
     list(APPEND GUI_LIBRARIES dwmapi)
+    set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
+elseif(UNIX)
+    # Linux: Add X11 for native window manager integration
+    find_package(X11)
+    if(X11_FOUND)
+        list(APPEND GUI_LIBRARIES ${X11_LIBRARIES})
+    endif()
+    set(GUI_LIBRARIES ${GUI_LIBRARIES} PARENT_SCOPE)
 endif()
