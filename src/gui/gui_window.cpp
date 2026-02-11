@@ -7,7 +7,9 @@
 #include <thread>
 
 // GLFW and OpenGL
+#ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#endif
 #ifdef __APPLE__
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
