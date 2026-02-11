@@ -68,4 +68,6 @@ if(APPLE)
         ${IOKIT_LIBRARY}
         ${COREVIDEO_LIBRARY}
     )
+elseif(WIN32)
+    list(APPEND GUI_LIBRARIES dwmapi)
 endif()

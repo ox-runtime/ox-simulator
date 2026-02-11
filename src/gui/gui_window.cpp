@@ -2,11 +2,32 @@
 
 #include <chrono>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
 // GLFW and OpenGL
+#define GLFW_EXPOSE_NATIVE_WIN32
+#ifdef __APPLE__
+#define GLFW_EXPOSE_NATIVE_COCOA
+#endif
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
+// Windows dark mode support
+#ifdef _WIN32
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
+#ifndef DWMWA_SYSTEMBACKDROP_TYPE
+#define DWMWA_SYSTEMBACKDROP_TYPE 38
+#endif
+
+#endif
 
 // Dear ImGui
 #include "device_profiles.h"
@@ -16,6 +37,140 @@
 #include "imgui_impl_opengl3.h"
 
 namespace ox_sim {
+
+// Default font size for the GUI
+const float DEFAULT_FONT_SIZE = 17.0f;
+
+// Get the appropriate Arial-like font path for the current platform
+std::string GetFontPath() {
+#ifdef _WIN32
+    return "C:/Windows/Fonts/arial.ttf";
+#endif
+#ifdef __APPLE__
+    return "/System/Library/Fonts/Helvetica.ttc";
+#endif
+#ifdef __linux__
+    // Try multiple Arial-like fonts in order of preference
+    const char* linux_font_paths[] = {
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  // Liberation Sans (most common)
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",                  // DejaVu Sans
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",                    // Ubuntu
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf"                   // FreeSans
+    };
+    for (const char* path : linux_font_paths) {
+        // Check if file exists (simple check using filesystem if available)
+        if (std::filesystem::exists(path)) {
+            return path;
+        }
+    }
+    return "";  // No font found
+#endif
+    return "";  // Fallback
+}
+
+void setup_theme() {
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4* colors = style.Colors;
+
+    // Neutral gray palette (Unity-like)
+    // --------------------------------------------------------
+    const ImVec4 base = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);         // #2e2e2e
+    const ImVec4 mantle = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);       // #262626
+    const ImVec4 surface0 = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);     // #383838
+    const ImVec4 surface1 = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);     // #404040
+    const ImVec4 surface2 = ImVec4(0.29f, 0.29f, 0.29f, 1.0f);     // #4a4a4a
+    const ImVec4 overlay0 = ImVec4(0.40f, 0.40f, 0.40f, 1.0f);     // #666666
+    const ImVec4 overlay2 = ImVec4(0.55f, 0.55f, 0.55f, 1.0f);     // #8c8c8c
+    const ImVec4 text = ImVec4(0.86f, 0.86f, 0.86f, 1.0f);         // #dbdbdb
+    const ImVec4 subtext0 = ImVec4(0.72f, 0.72f, 0.72f, 1.0f);     // #b8b8b8
+    const ImVec4 accent = ImVec4(0.26f, 0.62f, 0.95f, 1.0f);       // #429ff2
+    const ImVec4 accent_soft = ImVec4(0.20f, 0.48f, 0.78f, 1.0f);  // #337bc7
+    const ImVec4 warn = ImVec4(0.96f, 0.78f, 0.36f, 1.0f);         // #f4c75c
+    const ImVec4 ok = ImVec4(0.40f, 0.74f, 0.40f, 1.0f);           // #66bd66
+
+    // Main window and backgrounds
+    colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);  // Transparent
+    colors[ImGuiCol_ChildBg] = ImVec4(1.0f, 1.0f, 1.0f, 0.04f);  // Translucent white
+    colors[ImGuiCol_PopupBg] = surface0;
+    colors[ImGuiCol_Border] = surface1;
+    colors[ImGuiCol_BorderShadow] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    colors[ImGuiCol_FrameBg] = surface0;
+    colors[ImGuiCol_FrameBgHovered] = surface1;
+    colors[ImGuiCol_FrameBgActive] = surface2;
+    colors[ImGuiCol_TitleBg] = mantle;
+    colors[ImGuiCol_TitleBgActive] = surface0;
+    colors[ImGuiCol_TitleBgCollapsed] = mantle;
+    colors[ImGuiCol_MenuBarBg] = mantle;
+    colors[ImGuiCol_ScrollbarBg] = surface0;
+    colors[ImGuiCol_ScrollbarGrab] = surface2;
+    colors[ImGuiCol_ScrollbarGrabHovered] = overlay0;
+    colors[ImGuiCol_ScrollbarGrabActive] = overlay2;
+    colors[ImGuiCol_CheckMark] = ok;
+    colors[ImGuiCol_SliderGrab] = accent_soft;
+    colors[ImGuiCol_SliderGrabActive] = accent;
+    colors[ImGuiCol_Button] = surface1;
+    colors[ImGuiCol_ButtonHovered] = surface2;
+    colors[ImGuiCol_ButtonActive] = overlay0;
+    colors[ImGuiCol_Header] = surface0;
+    colors[ImGuiCol_HeaderHovered] = surface1;
+    colors[ImGuiCol_HeaderActive] = surface2;
+    colors[ImGuiCol_Separator] = surface1;
+    colors[ImGuiCol_SeparatorHovered] = overlay0;
+    colors[ImGuiCol_SeparatorActive] = overlay2;
+    colors[ImGuiCol_ResizeGrip] = surface2;
+    colors[ImGuiCol_ResizeGripHovered] = overlay0;
+    colors[ImGuiCol_ResizeGripActive] = overlay2;
+    colors[ImGuiCol_Tab] = surface0;
+    colors[ImGuiCol_TabHovered] = surface2;
+    colors[ImGuiCol_TabActive] = surface1;
+    colors[ImGuiCol_TabUnfocused] = surface0;
+    colors[ImGuiCol_TabUnfocusedActive] = surface1;
+    colors[ImGuiCol_PlotLines] = accent;
+    colors[ImGuiCol_PlotLinesHovered] = warn;
+    colors[ImGuiCol_PlotHistogram] = accent_soft;
+    colors[ImGuiCol_PlotHistogramHovered] = ok;
+    colors[ImGuiCol_TableHeaderBg] = surface0;
+    colors[ImGuiCol_TableBorderStrong] = surface1;
+    colors[ImGuiCol_TableBorderLight] = surface0;
+    colors[ImGuiCol_TableRowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.06f);
+    colors[ImGuiCol_TextSelectedBg] = overlay0;
+    colors[ImGuiCol_DragDropTarget] = warn;
+    colors[ImGuiCol_NavHighlight] = accent;
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+    colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.8f, 0.8f, 0.8f, 0.2f);
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.35f);
+    colors[ImGuiCol_Text] = text;
+    colors[ImGuiCol_TextDisabled] = subtext0;
+
+    // Rounded corners
+    style.WindowRounding = 4.0f;
+    style.ChildRounding = 5.0f;
+    style.FrameRounding = 3.0f;
+    style.PopupRounding = 3.0f;
+    style.ScrollbarRounding = 6.0f;
+    style.GrabRounding = 3.0f;
+    style.TabRounding = 3.0f;
+
+    // Padding and spacing
+    style.WindowPadding = ImVec2(10.0f, 10.0f);
+    style.FramePadding = ImVec2(6.0f, 4.0f);
+    style.ItemSpacing = ImVec2(10.0f, 6.0f);
+    style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
+    style.IndentSpacing = 18.0f;
+    style.ScrollbarSize = 14.0f;
+    style.GrabMinSize = 10.0f;
+
+    // Borders
+    style.WindowBorderSize = 0.0f;  // Remove window border
+    style.ChildBorderSize = 1.0f;
+    style.PopupBorderSize = 1.0f;
+    style.FrameBorderSize = 1.0f;
+    style.TabBorderSize = 0.0f;
+
+    style.AntiAliasedLines = true;
+    style.AntiAliasedFill = true;
+}
 
 // GLFW error callback
 static void glfw_error_callback(int error, const char* description) {
@@ -82,7 +237,7 @@ bool GuiWindow::Start(SimulatorCore* simulator, const DeviceProfile** device_pro
     RenderLoop();
     return true;
 #else
-   try {
+    try {
         render_thread_ = std::thread(&GuiWindow::RenderLoop, this);
         std::cout << "GUI window started successfully" << std::endl;
         return true;
@@ -168,13 +323,32 @@ bool GuiWindow::InitializeGraphics() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
+    // Enable transparent framebuffer for native backdrop effects
+    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+
     // Create window with graphics context
-    window_ = glfwCreateWindow(1280, 720, "ox Simulator Control Panel", nullptr, nullptr);
+    window_ = glfwCreateWindow(1280, 720, "ox simulator", nullptr, nullptr);
     if (window_ == nullptr) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return false;
     }
+
+#ifdef _WIN32
+    // Enable dark mode for the title bar on Windows
+    BOOL darkMode = TRUE;
+    DwmSetWindowAttribute(glfwGetWin32Window(window_), DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+
+    // Enable Mica backdrop effect for modern Windows look
+    int backdropType = 2;  // DWMSBT_MAINWINDOW
+    DwmSetWindowAttribute(glfwGetWin32Window(window_), DWMWA_SYSTEMBACKDROP_TYPE, &backdropType, sizeof(backdropType));
+#endif
+
+#ifdef __APPLE__
+    // TODO: Enable vibrancy effect on macOS for native look
+    // This requires accessing NSWindow via glfwGetCocoaWindow and setting NSVisualEffectView
+    // Implementation needs Objective-C++ (.mm file) or separate implementation
+#endif
 
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);  // Enable vsync
@@ -185,8 +359,21 @@ bool GuiWindow::InitializeGraphics() {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
+    // Setup custom theme
+    setup_theme();
+
+    // Load platform-specific Arial-like font
+    std::string font_path = GetFontPath();
+    ImFont* default_font = nullptr;
+    if (!font_path.empty()) {
+        default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), DEFAULT_FONT_SIZE);
+    }
+
+    if (default_font) {
+        io.FontDefault = default_font;
+    } else {
+        io.FontDefault = io.Fonts->AddFontDefault();
+    }
 
     // Setup Platform/Renderer backends
     // Note: ImGui_ImplOpenGL3_Init will call imgl3wInit() to load OpenGL functions
@@ -262,7 +449,7 @@ void GuiWindow::RenderFrame() {
 
     // Header
     ImGui::PushFont(ImGui::GetFont());
-    ImGui::TextColored(ImVec4(0.3f, 0.7f, 1.0f, 1.0f), "ox Simulator - Device Control Panel");
+    ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "Device");
     ImGui::PopFont();
     ImGui::Separator();
 
@@ -311,14 +498,14 @@ void GuiWindow::RenderFrame() {
     // Second row: Device Information and Status
     if (*device_profile_ptr_) {
         const DeviceProfile* profile = *device_profile_ptr_;
-        ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Device: %s", profile->name);
+        ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.8f, 1.0f), "Device: %s", profile->name);
         ImGui::SameLine(300);
         ImGui::Text("Manufacturer: %s", profile->manufacturer);
         ImGui::SameLine(600);
         ImGui::Text("Display: %dx%d @ %.0f Hz", profile->display_width, profile->display_height, profile->refresh_rate);
     }
 
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: %s", status_message_.c_str());
+    ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Status: %s", status_message_.c_str());
 
     ImGui::EndChild();
 
@@ -356,11 +543,7 @@ void GuiWindow::RenderFrame() {
                     ImGui::TableSetColumnIndex(col);
 
                     // Add some padding around each panel
-                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(spacing, spacing));
-
                     RenderDevicePanel(profile->devices[i], static_cast<int>(i), col_width - spacing * 2);
-
-                    ImGui::PopStyleVar();
                 }
 
                 ImGui::EndTable();
@@ -376,7 +559,8 @@ void GuiWindow::RenderFrame() {
     int display_w, display_h;
     glfwGetFramebufferSize(window_, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
-    glClearColor(0.15f, 0.15f, 0.15f, 1.00f);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -450,21 +634,14 @@ void GuiWindow::UpdateFrameTextures() {
 void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width) {
     ImGui::PushID(device_index);
 
-    // Device panel background
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-
     // Device panel as a bordered child window with fixed height to prevent scrolling
     std::string panel_label = "##DevicePanel" + std::to_string(device_index);
     const float panel_height = 400.0f;  // Fixed height to ensure panels fit
     ImGui::BeginChild(panel_label.c_str(), ImVec2(panel_width, panel_height), true);
 
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
-
     // Device header
     std::string device_label = std::string(device.role);
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s", device_label.c_str());
+    ImGui::TextColored(ImVec4(0.45f, 0.75f, 0.95f, 1.0f), "%s", device_label.c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(%s)", device.user_path);
     ImGui::Separator();
