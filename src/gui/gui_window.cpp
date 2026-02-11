@@ -41,7 +41,15 @@
 namespace ox_sim {
 
 // Default font size for the GUI
+#ifdef _WIN32
 const float DEFAULT_FONT_SIZE = 17.0f;
+#endif
+#ifdef __APPLE__
+const float DEFAULT_FONT_SIZE = 13.0f;
+#endif
+#ifdef __linux__
+const float DEFAULT_FONT_SIZE = 16.0f;
+#endif
 
 // Get the appropriate Arial-like font path for the current platform
 std::string GetFontPath() {
