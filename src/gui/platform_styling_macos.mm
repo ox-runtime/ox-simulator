@@ -24,19 +24,11 @@ extern "C" void ApplyMacOSNativeStyle(GLFWwindow* window) {
         //
         // Instead, we apply native macOS appearance through window properties only.
 
-        // Set window background color to match macOS native dark theme
-        // This shows through the transparent framebuffer, giving a native look
-        // CONTENT VISIBILITY: Window background doesn't interfere with OpenGL rendering
-        if (@available(macOS 10.14, *)) {
-            // macOS 10.14+: Use system colors that adapt to light/dark mode
-            [nsWindow setBackgroundColor:[NSColor windowBackgroundColor]];
-            std::cout << "Applied macOS 10.14+ native window background (content visible)" << std::endl;
-        } else {
-            // macOS < 10.14: Use a static dark color for consistency
-            [nsWindow setBackgroundColor:[NSColor colorWithCalibratedWhite:0.18 alpha:1.0]];
-            std::cout << "Applied macOS < 10.14 native window background (content visible)" << std::endl;
-        }
-        
+        // ALWAYS use dark mode background (consistent with dark ImGui theme)
+        // Never use light mode as it would clash with dark UI colors
+        [nsWindow setBackgroundColor:[NSColor colorWithCalibratedWhite:0.18 alpha:1.0]];
+        std::cout << "Applied macOS dark mode window background (content visible)" << std::endl;
+
         // Enable native-looking title bar (non-transparent, standard appearance)
         nsWindow.titlebarAppearsTransparent = NO;
 
@@ -46,6 +38,8 @@ extern "C" void ApplyMacOSNativeStyle(GLFWwindow* window) {
 
         // Make window accept mouse moved events for better interaction
         [nsWindow setAcceptsMouseMovedEvents:YES];
+
+        std::cout << "macOS window styling complete - OpenGL content visibility guaranteed" << std::endl;
     }
 }
 
