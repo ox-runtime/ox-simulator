@@ -124,23 +124,27 @@ static void ApplyWindowsNativeStyle(GLFWwindow* window) {
     }
 
     // Apply backdrop effect based on Windows version
+    // CONTENT VISIBILITY: All Windows paths preserve content rendering
     if (IsWindows11OrLater()) {
-        // Windows 11: Use Mica backdrop
+        // Windows 11: Use Mica backdrop (renders behind content, doesn't hide it)
         int backdropType = DWMSBT_MAINWINDOW;  // Mica
         HRESULT hr = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropType, sizeof(backdropType));
         if (SUCCEEDED(hr)) {
-            std::cout << "Applied Windows 11 Mica backdrop" << std::endl;
+            std::cout << "Applied Windows 11 Mica backdrop (content visible)" << std::endl;
         } else {
             std::cerr << "Warning: Failed to apply Mica backdrop (HRESULT: 0x" << std::hex << hr << ")" << std::endl;
             std::cerr << "Note: Mica requires Windows 11 22H2+ and may not work in all window configurations"
                       << std::endl;
+            std::cout << "Continuing with standard window (content visible)" << std::endl;
         }
     } else if (IsWindows10OrLater()) {
         // Windows 10: Just use dark mode title bar, don't apply blur
         // (Blur-behind was deprecated and doesn't work well on Windows 10)
-        std::cout << "Applied Windows 10 dark mode (no backdrop effect)" << std::endl;
+        // SAFE: Only affects title bar, content fully visible
+        std::cout << "Applied Windows 10 dark mode (content visible)" << std::endl;
     } else if (IsWindows7OrLater()) {
         // Windows 7-8: Use DWM blur-behind (but don't extend frame to avoid transparency issues)
+        // SAFE: We explicitly avoid extending the frame, so content remains visible
         DWM_BLURBEHIND bb = {};
         bb.dwFlags = DWM_BB_ENABLE;
         bb.fEnable = TRUE;
@@ -148,11 +152,14 @@ static void ApplyWindowsNativeStyle(GLFWwindow* window) {
 
         HRESULT hr = DwmEnableBlurBehindWindow(hwnd, &bb);
         if (SUCCEEDED(hr)) {
-            std::cout << "Applied Windows 7/8 Aero blur-behind effect" << std::endl;
+            std::cout << "Applied Windows 7/8 Aero blur-behind effect (content visible)" << std::endl;
         } else {
             std::cerr << "Warning: Failed to apply Aero effect (HRESULT: 0x" << std::hex << hr << ")" << std::endl;
         }
         // Note: Not extending frame to avoid making window completely transparent
+    } else {
+        // Windows < 7 (unlikely but possible): No styling, standard window
+        std::cout << "Windows < 7: Using standard window (content visible)" << std::endl;
     }
 }
 
@@ -174,11 +181,13 @@ bool IsMacOS10_14OrLater() {
 
 static void ApplyLinuxNativeStyle(GLFWwindow* window) {
     // Linux: Set window properties for native desktop integration
+    // CONTENT VISIBILITY: Only sets window manager hints, doesn't affect rendering
     Display* display = glfwGetX11Display();
     Window x11_window = glfwGetX11Window(window);
 
     if (!display || !x11_window) {
         std::cerr << "Warning: Failed to get X11 display/window" << std::endl;
+        std::cerr << "Continuing without X11 hints (content still visible)" << std::endl;
         return;
     }
 
@@ -195,7 +204,7 @@ static void ApplyLinuxNativeStyle(GLFWwindow* window) {
     // Flush changes
     XFlush(display);
 
-    std::cout << "Applied Linux window manager hints for native integration" << std::endl;
+    std::cout << "Applied Linux window manager hints for native integration (content visible)" << std::endl;
 }
 
 #endif
@@ -211,17 +220,16 @@ void ApplyNativeWindowStyle(GLFWwindow* window) {
     ApplyWindowsNativeStyle(window);
 #elif defined(__APPLE__)
     std::cout << "Applying macOS native styling..." << std::endl;
-    if (IsMacOS10_14OrLater()) {
-        // Call Objective-C++ implementation
-        ApplyMacOSNativeStyle(window);
-    } else {
-        std::cout << "macOS version < 10.14 - skipping native styling" << std::endl;
-    }
+    // CONTENT VISIBILITY: All macOS paths ensure content remains visible
+    // Call Objective-C++ implementation (handles both >= 10.14 and < 10.14)
+    ApplyMacOSNativeStyle(window);
 #elif defined(__linux__)
     std::cout << "Applying Linux native styling..." << std::endl;
     ApplyLinuxNativeStyle(window);
 #else
-    std::cout << "Unknown platform - skipping native window styling (using fallback)" << std::endl;
+    // Unknown platform fallback
+    // CONTENT VISIBILITY: No styling applied, standard GLFW window with full content visibility
+    std::cout << "Unknown platform - using standard window styling (content visible)" << std::endl;
 #endif
 }
 

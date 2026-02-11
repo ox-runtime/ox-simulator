@@ -17,43 +17,33 @@ extern "C" void ApplyMacOSNativeStyle(GLFWwindow* window) {
             return;
         }
 
-        // macOS 10.14+ (Mojave): Use NSVisualEffectView for native backdrop
+        // NOTE: We cannot use NSVisualEffectView with GLFW's OpenGL rendering because:
+        // 1. GLFW creates an NSOpenGLView as the content view
+        // 2. Adding NSVisualEffectView as a subview interferes with OpenGL rendering
+        // 3. The transparent framebuffer + vibrancy causes content to disappear
+        //
+        // Instead, we apply native macOS appearance through window properties only.
+
+        // Set window background color to match macOS native dark theme
+        // This shows through the transparent framebuffer, giving a native look
+        // CONTENT VISIBILITY: Window background doesn't interfere with OpenGL rendering
         if (@available(macOS 10.14, *)) {
-            // Create a visual effect view that fills the entire content view
-            NSVisualEffectView* effectView = [[NSVisualEffectView alloc] initWithFrame:[[nsWindow contentView] bounds]];
-            
-            // Set material based on macOS version for best compatibility
-            if (@available(macOS 10.14, *)) {
-                // macOS 10.14+: Use appropriate material
-                // NSVisualEffectMaterialUnderWindowBackground gives a nice native look
-                // that works well across light and dark modes
-                effectView.material = NSVisualEffectMaterialUnderWindowBackground;
-                effectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-                effectView.state = NSVisualEffectStateFollowsWindowActiveState;
-                
-                std::cout << "Applied macOS 10.14+ visual effect material (UnderWindowBackground)" << std::endl;
-            }
-            
-            // Make it resize with the window
-            effectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-            
-            // Insert the effect view at the bottom of the view hierarchy
-            // This allows ImGui content to render on top
-            [[nsWindow contentView] addSubview:effectView positioned:NSWindowBelow relativeTo:nil];
-            
-            // Enable title bar transparency and full-size content view
-            nsWindow.titlebarAppearsTransparent = NO;  // Keep title bar visible but native
-            nsWindow.styleMask |= NSWindowStyleMaskFullSizeContentView;
-            
-            std::cout << "Applied macOS native window styling with vibrancy effect" << std::endl;
+            // macOS 10.14+: Use system colors that adapt to light/dark mode
+            [nsWindow setBackgroundColor:[NSColor windowBackgroundColor]];
+            std::cout << "Applied macOS 10.14+ native window background (content visible)" << std::endl;
         } else {
-            // macOS < 10.14: Fallback to standard window appearance
-            std::cout << "macOS < 10.14: Using standard window appearance (no vibrancy)" << std::endl;
+            // macOS < 10.14: Use a static dark color for consistency
+            [nsWindow setBackgroundColor:[NSColor colorWithCalibratedWhite:0.18 alpha:1.0]];
+            std::cout << "Applied macOS < 10.14 native window background (content visible)" << std::endl;
         }
         
-        // Set window background color to work well with transparency
-        [nsWindow setBackgroundColor:[NSColor colorWithCalibratedWhite:0.18 alpha:1.0]];
-        
+        // Enable native-looking title bar (non-transparent, standard appearance)
+        nsWindow.titlebarAppearsTransparent = NO;
+
+        // Ensure the window is opaque so OpenGL content renders properly
+        // CRITICAL: This prevents transparency issues that would hide content
+        [nsWindow setOpaque:YES];
+
         // Make window accept mouse moved events for better interaction
         [nsWindow setAcceptsMouseMovedEvents:YES];
     }
