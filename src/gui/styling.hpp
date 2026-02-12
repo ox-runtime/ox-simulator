@@ -102,15 +102,7 @@ struct UIColors {
 UIColors theme_colors;
 
 // Default font size for the GUI
-#ifdef _WIN32
-const float DEFAULT_FONT_SIZE = 17.0f;
-#endif
-#ifdef __APPLE__
-const float DEFAULT_FONT_SIZE = 13.0f;
-#endif
-#ifdef __linux__
-const float DEFAULT_FONT_SIZE = 16.0f;
-#endif
+const float GLOBAL_FONT_SIZE = 13.0f;
 
 // Get the appropriate Arial-like font path for the current platform
 inline std::string GetFontPath() {
@@ -145,40 +137,9 @@ inline void setup_fonts(ImGuiIO& io, GLFWwindow* window) {
     std::string font_path = GetFontPath();
     ImFont* default_font = nullptr;
 
-#ifdef __APPLE__
-    // Retina display support: Detect framebuffer scale and adjust font rendering
-    int window_width, window_height;
-    int framebuffer_width, framebuffer_height;
-    glfwGetWindowSize(window, &window_width, &window_height);
-    glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
-
-    // Calculate scale factor (typically 2.0 on Retina, 1.0 on non-Retina)
-    float scale_x = (float)framebuffer_width / (float)window_width;
-    float scale_y = (float)framebuffer_height / (float)window_height;
-    float font_scale = (scale_x + scale_y) * 0.5f;  // Average of x and y scale
-
-    if (font_scale > 1.1f) {
-        // Retina display detected - load font at higher resolution for crisp rendering
-        if (!font_path.empty()) {
-            // Load font at scaled size for Retina displays
-            default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), DEFAULT_FONT_SIZE * font_scale);
-            // Scale back down in ImGui to get crisp rendering at native resolution
-            io.FontGlobalScale = 1.0f / font_scale;
-            std::cout << "Retina display detected (scale: " << font_scale << "x) - using high-DPI font rendering"
-                      << std::endl;
-        }
-    } else {
-        // Non-Retina display - standard font loading
-        if (!font_path.empty()) {
-            default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), DEFAULT_FONT_SIZE);
-        }
-    }
-#else
-    // Windows/Linux - standard font loading
     if (!font_path.empty()) {
-        default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), DEFAULT_FONT_SIZE);
+        default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), GLOBAL_FONT_SIZE);
     }
-#endif
 
     if (default_font) {
         io.FontDefault = default_font;

@@ -19,6 +19,9 @@
 
 namespace ox_sim {
 
+const int WINDOW_WIDTH = 1280;
+const int WINDOW_HEIGHT = 720;
+
 // GLFW error callback
 static void glfw_error_callback(int error, const char* description) {
     std::cerr << "GLFW Error " << error << ": " << description << std::endl;
@@ -170,8 +173,10 @@ bool GuiWindow::InitializeGraphics() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+
     // Create window with graphics context
-    window_ = glfwCreateWindow(1280, 720, "ox simulator", nullptr, nullptr);
+    window_ = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "ox simulator", nullptr, nullptr);
     if (window_ == nullptr) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -404,6 +409,11 @@ void GuiWindow::RenderFrame() {
     int display_w, display_h;
     glfwGetFramebufferSize(window_, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
+
+    float xscale, yscale;
+    glfwGetWindowContentScale(window_, &xscale, &yscale);
+
+    io.FontGlobalScale = (xscale + yscale) * 0.5f;
 
     // Clear with solid background
     glClearColor(theme_colors.background_color.x, theme_colors.background_color.y, theme_colors.background_color.z,
