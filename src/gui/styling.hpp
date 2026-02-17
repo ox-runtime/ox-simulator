@@ -102,7 +102,7 @@ struct UIColors {
 UIColors theme_colors;
 
 // Default font size for the GUI
-const float GLOBAL_FONT_SIZE = 13.0f;
+const float GLOBAL_FONT_SIZE = 17.0f;
 
 // Get the appropriate Arial-like font path for the current platform
 inline std::string GetFontPath() {
@@ -137,12 +137,27 @@ inline void setup_fonts(ImGuiIO& io, GLFWwindow* window) {
     std::string font_path = GetFontPath();
     ImFont* default_font = nullptr;
 
+    // Retina display support: Detect framebuffer scale and adjust font rendering
+    float xscale, yscale;
+    glfwGetWindowContentScale(window, &xscale, &yscale);
+
+    float fontScale = (xscale + yscale) * 0.5f;  // Average of x and y scale
+    float fontSize = GLOBAL_FONT_SIZE * fontScale;
+#ifdef __APPLE__
+    fontSize *= (72.0f / 96.0f);  // macOS uses 72 DPI points, adjust to 96 DPI standard
+#endif
+
     if (!font_path.empty()) {
-        default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), GLOBAL_FONT_SIZE);
+        default_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), fontSize);
+    }
+
+    if (fontScale > 1.001f) {
+        std::cout << "High DPI display detected (scale: " << fontScale << "x)" << std::endl;
     }
 
     if (default_font) {
         io.FontDefault = default_font;
+        io.FontGlobalScale = 1.0f / fontScale;
     } else {
         io.FontDefault = io.Fonts->AddFontDefault();
     }

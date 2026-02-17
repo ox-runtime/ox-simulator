@@ -413,7 +413,8 @@ void GuiWindow::RenderFrame() {
     float xscale, yscale;
     glfwGetWindowContentScale(window_, &xscale, &yscale);
 
-    io.FontGlobalScale = (xscale + yscale) * 0.5f;
+    float fontScale = (xscale + yscale) * 0.5f;
+    io.FontGlobalScale = 1.0f / fontScale;
 
     // Clear with solid background
     glClearColor(theme_colors.background_color.x, theme_colors.background_color.y, theme_colors.background_color.z,
