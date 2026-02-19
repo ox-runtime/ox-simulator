@@ -54,7 +54,7 @@ def main():
     # Check http://localhost:8765/v1/profile to see the available inputs for the selected device profile
     # and adjust the input paths below accordingly.
 
-    set_headset_pose({"x": 0.0, "y": 0.0, "z": 0.0}, {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0})
+    set_headset_pose({"x": 0.0, "y": 1.6, "z": 0.0}, {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0})
 
     print("Starting controller simulation loop. Press Ctrl+C to stop.")
 
