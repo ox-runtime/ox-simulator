@@ -504,7 +504,7 @@ void GuiWindow::RenderFramePreview() {
             const char* msg = "No image received";
             ImVec2 ts = ImGui::CalcTextSize(msg);
             ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
-            ImGui::TextDisabled("%s", msg);
+            ImGui::Text("%s", msg);
         } else if (preview_eye_selection_ == 2) {
             // Both eyes side by side, each maintaining aspect ratio
             const float aspect = (float)preview_width_ / (float)preview_height_;
@@ -552,7 +552,7 @@ void GuiWindow::RenderFramePreview() {
             } else {
                 ImVec2 ts = ImGui::CalcTextSize(no_msg);
                 ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
-                ImGui::TextDisabled("%s", no_msg);
+                ImGui::Text("%s", no_msg);
             }
         }
     }
