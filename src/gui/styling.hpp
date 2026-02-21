@@ -378,7 +378,7 @@ inline void setup_theme_styling() {
     style.TabRounding = 3.0f;
 
     // Padding and spacing
-    style.WindowPadding = ImVec2(10.0f, 10.0f);
+    style.WindowPadding = ImVec2(0.0f, 0.0f);
     style.FramePadding = ImVec2(6.0f, 4.0f);
     style.ItemSpacing = ImVec2(10.0f, 6.0f);
     style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);

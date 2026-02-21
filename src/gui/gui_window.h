@@ -61,7 +61,8 @@ class GuiWindow {
     GLFWwindow* window_;
 
     // UI state
-    int selected_device_type_;  // For dropdown
+    int selected_device_type_;   // For device dropdown
+    int preview_eye_selection_;  // 0=Left, 1=Right, 2=Both
     std::string status_message_;
 
     // Frame preview textures

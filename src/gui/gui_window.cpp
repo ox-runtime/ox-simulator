@@ -35,6 +35,7 @@ GuiWindow::GuiWindow()
       should_stop_(false),
       window_(nullptr),
       selected_device_type_(0),
+      preview_eye_selection_(0),
       status_message_("Ready"),
       preview_width_(0),
       preview_height_(0),
@@ -274,132 +275,159 @@ void GuiWindow::RenderFrame() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // Get window size and use full window (no separate ImGui window)
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 window_size = io.DisplaySize;
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(window_size);
 
-    // Fullscreen window with no decorations
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
                                     ImGuiWindowFlags_NoBringToFrontOnFocus;
 
     ImGui::Begin("MainWindow", nullptr, window_flags);
+    ImVec2 content_size = ImGui::GetContentRegionAvail();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
-    const ImVec2 content_size = ImGui::GetContentRegionAvail();
+    // ========== TOP TOOLBAR STRIP ==========
+    const float top_toolbar_h = 48.0f;
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, theme_colors.surface);
+    ImGui::BeginChild("TopToolbar", ImVec2(0, top_toolbar_h), false, ImGuiWindowFlags_NoScrollbar);
+    {
+        // Estimates for centering
+        const float btn_runtime_w = 190.0f;
+        const float btn_api_w = 160.0f;
+        const float lbl_device_w = ImGui::CalcTextSize("Device:").x + style.ItemSpacing.x;
+        const float combo_device_w = 190.0f;
+        const float spacing = style.ItemSpacing.x * 2.0f;
+        const float total_w = btn_runtime_w + spacing + btn_api_w + spacing + lbl_device_w + combo_device_w;
+        const ImVec2 avail = ImGui::GetContentRegionAvail();
 
-    // --- Frame Preview ---
-    RenderFramePreview();
+        float start_x = (avail.x - total_w) * 0.5f;
+        if (start_x < 0.0f) start_x = 0.0f;
+        float center_y = (avail.y - ImGui::GetFrameHeight()) * 0.5f;
+        if (center_y < 0.0f) center_y = 0.0f;
+        ImGui::SetCursorPos(ImVec2(start_x, center_y));
 
-    // ========== TOP TOOLBAR (Fixed Height) ==========
-    const float toolbar_height = 120.0f;
-    ImGui::BeginChild("Toolbar", ImVec2(0, toolbar_height), true, ImGuiWindowFlags_NoScrollbar);
-
-    // Header
-    ImGui::PushFont(ImGui::GetFont());
-    ImGui::TextColored(theme_colors.header_color, "Device");
-    ImGui::PopFont();
-    ImGui::Separator();
-
-    // First row: API and Device Selection
-    ImGui::Columns(2, "TopRow", false);
-    ImGui::SetColumnWidth(0, content_size.x * 0.5f);
-
-    // API Toggle (Left Column)
-    ImGui::Text("HTTP API:");
-    ImGui::SameLine();
-    bool api_enabled = *api_enabled_;
-    if (ImGui::Checkbox("Enabled", &api_enabled)) {
-        *api_enabled_ = api_enabled;
-        status_message_ = api_enabled ? "API enabled (Note: Server cannot be dynamically stopped)"
-                                      : "API disabled (Note: Server will remain active)";
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Toggle HTTP API state (Note: Server restart required for changes to take effect)");
-    }
-    ImGui::SameLine();
-    ImGui::TextColored(theme_colors.api_port_color, "(Port: 8765)");
-
-    ImGui::NextColumn();
-
-    // Device Selection (Right Column)
-    ImGui::Text("Device Profile:");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(250);
-    const char* device_names[] = {"Meta Quest 2", "Meta Quest 3", "HTC Vive", "Valve Index", "HTC Vive Tracker"};
-    int current_device = selected_device_type_;
-    if (ImGui::Combo("##DeviceSelect", &current_device, device_names, IM_ARRAYSIZE(device_names))) {
-        DeviceType new_type = static_cast<DeviceType>(current_device);
-        const DeviceProfile& new_profile = GetDeviceProfile(new_type);
-        if (simulator_->SwitchDevice(&new_profile)) {
-            selected_device_type_ = current_device;
-            *device_profile_ptr_ = &new_profile;
-            status_message_ = std::string("Switched to ") + new_profile.name;
-        } else {
-            status_message_ = "Failed to switch device profile";
+        // "Set as OpenXR Runtime" button
+        if (ImGui::Button("Set as OpenXR Runtime", ImVec2(btn_runtime_w, 0))) {
+            // Register ox runtime as the active OpenXR runtime
+#ifdef _WIN32
+            HKEY hKey;
+            if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Khronos\\OpenXR\\1", 0, nullptr, REG_OPTION_NON_VOLATILE,
+                                KEY_SET_VALUE, nullptr, &hKey, nullptr) == ERROR_SUCCESS) {
+                // Runtime JSON path is typically alongside the executable; update if needed
+                const std::string runtime_json = "ox_openxr.json";
+                RegSetValueExA(hKey, "ActiveRuntime", 0, REG_SZ, reinterpret_cast<const BYTE*>(runtime_json.c_str()),
+                               static_cast<DWORD>(runtime_json.size() + 1));
+                RegCloseKey(hKey);
+                status_message_ = "Registered as active OpenXR runtime";
+            } else {
+                status_message_ = "Failed to set runtime (try running as Administrator)";
+            }
+#else
+            status_message_ = "Set as active OpenXR runtime (set XR_RUNTIME_JSON env var)";
+#endif
         }
-    }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Register ox simulator as the active OpenXR runtime on this system");
+        }
 
-    ImGui::Columns(1);
-    ImGui::Separator();
+        ImGui::SameLine(0, spacing);
 
-    // Second row: Device Information and Status
-    if (*device_profile_ptr_) {
-        const DeviceProfile* profile = *device_profile_ptr_;
-        ImGui::TextColored(theme_colors.device_info_color, "Device: %s", profile->name);
-        ImGui::SameLine(300);
-        ImGui::Text("Manufacturer: %s", profile->manufacturer);
-        ImGui::SameLine(600);
-        ImGui::Text("Display: %dx%d @ %.0f Hz", profile->display_width, profile->display_height, profile->refresh_rate);
-    }
+        // "Enable API Server" toggle button
+        bool api_on = *api_enabled_;
+        if (api_on) {
+            ImGui::PushStyleColor(ImGuiCol_Button, theme_colors.accent);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, theme_colors.accent_hover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, theme_colors.accent_active);
+        }
+        if (ImGui::Button(api_on ? "API Server: ON" : "API Server: OFF", ImVec2(btn_api_w, 0))) {
+            *api_enabled_ = !*api_enabled_;
+            status_message_ = *api_enabled_ ? "API Server enabled (port 8765)" : "API Server disabled";
+        }
+        if (api_on) ImGui::PopStyleColor(3);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Toggle HTTP API server on port 8765");
+        }
 
-    ImGui::TextColored(theme_colors.status_color, "Status: %s", status_message_.c_str());
+        ImGui::SameLine(0, spacing);
 
-    ImGui::EndChild();
-
-    // ========== DEVICE PANELS (Tiled Layout) ==========
-    if (*device_profile_ptr_) {
-        const DeviceProfile* profile = *device_profile_ptr_;
-        const size_t device_count = profile->devices.size();
-
-        if (device_count > 0) {
-            // Calculate grid layout based on device count
-            int cols = 1;
-            if (device_count >= 4) cols = 2;
-            if (device_count >= 6) cols = 3;
-
-            const float spacing = 10.0f;
-            const float available_height = content_size.y - toolbar_height - spacing * 2;
-
-            // Use ImGui table for proper grid layout
-            ImGuiTableFlags table_flags = ImGuiTableFlags_None;
-            if (ImGui::BeginTable("DeviceTable", cols, table_flags)) {
-                // Set column widths
-                float col_width = (content_size.x - spacing * (cols + 1)) / cols;
-                for (int c = 0; c < cols; c++) {
-                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, col_width);
-                }
-
-                for (size_t i = 0; i < device_count; i++) {
-                    const int col = i % cols;
-                    const int row = i / cols;
-
-                    if (col == 0) {
-                        ImGui::TableNextRow();
-                    }
-
-                    ImGui::TableSetColumnIndex(col);
-
-                    // Add some padding around each panel
-                    RenderDevicePanel(profile->devices[i], static_cast<int>(i), col_width - spacing * 2);
-                }
-
-                ImGui::EndTable();
+        // Device profile dropdown
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Device:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(combo_device_w);
+        const char* device_names[] = {"Meta Quest 2", "Meta Quest 3", "HTC Vive", "Valve Index", "HTC Vive Tracker"};
+        int current_device = selected_device_type_;
+        if (ImGui::Combo("##DeviceSelect", &current_device, device_names, IM_ARRAYSIZE(device_names))) {
+            DeviceType new_type = static_cast<DeviceType>(current_device);
+            const DeviceProfile& new_profile = GetDeviceProfile(new_type);
+            if (simulator_->SwitchDevice(&new_profile)) {
+                selected_device_type_ = current_device;
+                *device_profile_ptr_ = &new_profile;
+                status_message_ = std::string("Switched to ") + new_profile.name;
+            } else {
+                status_message_ = "Failed to switch device profile";
             }
         }
     }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
+
+    // ========== MAIN AREA: Preview (left) + Sidebar (right) ==========
+    const float sidebar_w = 360.0f;
+    const float status_bar_h = 30.0f;
+    const float preview_w = content_size.x - sidebar_w - style.ItemSpacing.x;
+    const float main_area_h = content_size.y - top_toolbar_h - status_bar_h - style.ItemSpacing.y;
+
+    // Remove any ItemSpacing gap between toolbar and main area
+    ImGui::SetCursorPosY(top_toolbar_h);
+
+    // Preview area - add padding by reducing child size and positioning
+    const float preview_padding = 5.0f;
+    ImGui::SetCursorPos(ImVec2(preview_padding, top_toolbar_h));
+    ImGui::BeginChild("PreviewArea", ImVec2(preview_w - preview_padding, main_area_h), false,
+                      ImGuiWindowFlags_NoScrollbar);
+    {
+        RenderFramePreview();
+    }
+    ImGui::EndChild();
+
+    // Position sidebar to the right of the original preview area
+    ImGui::SetCursorPos(ImVec2(preview_w + style.ItemSpacing.x, top_toolbar_h));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::BeginChild("Sidebar", ImVec2(sidebar_w, main_area_h), false);
+    {
+        if (*device_profile_ptr_) {
+            const DeviceProfile* profile = *device_profile_ptr_;
+            const float inner_w = sidebar_w - style.ScrollbarSize - style.WindowPadding.x * 2.0f;
+            for (size_t i = 0; i < profile->devices.size(); i++) {
+                if (i > 0) ImGui::Spacing();
+                RenderDevicePanel(profile->devices[i], static_cast<int>(i), inner_w);
+            }
+        }
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+
+    // ---- Status bar ----
+    ImGui::BeginChild("StatusBar", ImVec2(0, status_bar_h), false, ImGuiWindowFlags_NoScrollbar);
+    {
+        ImGui::Separator();
+        ImGui::Indent(5.0f);
+        if (*device_profile_ptr_) {
+            const DeviceProfile* p = *device_profile_ptr_;
+            ImGui::TextColored(theme_colors.device_info_color, "Display: %dx%d @ %.0f Hz  |  %s", p->display_width,
+                               p->display_height, p->refresh_rate, status_message_.c_str());
+        } else {
+            ImGui::TextColored(theme_colors.status_color, "%s", status_message_.c_str());
+        }
+        ImGui::Unindent(5.0f);
+    }
+    ImGui::EndChild();
 
     ImGui::End();
 
@@ -427,22 +455,90 @@ void GuiWindow::RenderFrame() {
 }
 
 void GuiWindow::RenderFramePreview() {
-    // Update preview textures from driver frame data
     UpdateFrameTextures();
 
-    // Draw preview if available
-    if (preview_textures_valid_ && preview_width_ > 0 && preview_height_ > 0) {
-        ImGui::Text("Frame Preview:");
-        float preview_w = 320.0f;
-        float preview_h = preview_w * (float)preview_height_ / (float)preview_width_;
-        for (int eye = 0; eye < 2; ++eye) {
+    const ImVec2 region = ImGui::GetContentRegionAvail();
+    const float toolbar_h = ImGui::GetFrameHeightWithSpacing();
+    const float content_h = region.y - toolbar_h;
+    const bool has_image = preview_textures_valid_ && preview_width_ > 0 && preview_height_ > 0;
+
+    // ---- Preview toolbar (right-aligned eye dropdown) ----
+    ImGui::BeginChild("PreviewToolbar", ImVec2(0, toolbar_h), false, ImGuiWindowFlags_NoScrollbar);
+    {
+        const float combo_w = 80.0f;
+        const float label_w = ImGui::CalcTextSize("View:").x + ImGui::GetStyle().ItemSpacing.x;
+        float cursor_x = ImGui::GetContentRegionAvail().x - combo_w - label_w;
+        if (cursor_x < 0.0f) cursor_x = 0.0f;
+        ImGui::SetCursorPosX(cursor_x);
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("View:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(combo_w);
+        const char* eye_names[] = {"Left", "Right", "Both"};
+        ImGui::Combo("##EyeSelect", &preview_eye_selection_, eye_names, 3);
+    }
+    ImGui::EndChild();
+
+    // ---- Preview image area ----
+    ImGui::BeginChild("PreviewContent", ImVec2(0, content_h), false, ImGuiWindowFlags_NoScrollbar);
+    {
+        const ImVec2 avail = ImGui::GetContentRegionAvail();
+
+        if (!has_image) {
+            // No image at all — center the message
+            const char* msg = "No image received";
+            ImVec2 ts = ImGui::CalcTextSize(msg);
+            ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
+            ImGui::TextDisabled("%s", msg);
+        } else if (preview_eye_selection_ == 2) {
+            // Both eyes side by side, each maintaining aspect ratio
+            const float aspect = (float)preview_width_ / (float)preview_height_;
+            float w_each = avail.x * 0.5f;
+            float h_each = w_each / aspect;
+            if (h_each > avail.y) {
+                h_each = avail.y;
+                w_each = h_each * aspect;
+            }
+            const float y_off = (avail.y - h_each) * 0.5f;
+            const float x_off = (avail.x * 0.5f - w_each);
+            // Left eye
+            ImGui::SetCursorPos(ImVec2(x_off > 0.0f ? x_off : 0.0f, y_off));
+            if (preview_textures_[0]) {
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[0], ImVec2(w_each, h_each));
+            } else {
+                ImGui::Dummy(ImVec2(w_each, h_each));
+            }
+            ImGui::SameLine(0, 0);
+            // Right eye
+            if (preview_textures_[1]) {
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[1], ImVec2(w_each, h_each));
+            } else {
+                ImGui::Dummy(ImVec2(w_each, h_each));
+            }
+        } else {
+            // Single eye
+            const int eye = (preview_eye_selection_ == 1) ? 1 : 0;
+            const char* no_msg = (eye == 1) ? "No image received (right eye)" : "No image received (left eye)";
             if (preview_textures_[eye]) {
-                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(preview_w, preview_h));
-                ImGui::SameLine();
+                const float aspect = (float)preview_width_ / (float)preview_height_;
+                float img_w = avail.x;
+                float img_h = img_w / aspect;
+                if (img_h > avail.y) {
+                    img_h = avail.y;
+                    img_w = img_h * aspect;
+                }
+                const float x_off = (avail.x - img_w) * 0.5f;
+                const float y_off = (avail.y - img_h) * 0.5f;
+                ImGui::SetCursorPos(ImVec2(x_off, y_off));
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(img_w, img_h));
+            } else {
+                ImVec2 ts = ImGui::CalcTextSize(no_msg);
+                ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
+                ImGui::TextDisabled("%s", no_msg);
             }
         }
-        ImGui::NewLine();
     }
+    ImGui::EndChild();
 }
 
 void GuiWindow::UpdateFrameTextures() {
@@ -492,10 +588,16 @@ void GuiWindow::UpdateFrameTextures() {
 void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width) {
     ImGui::PushID(device_index);
 
-    // Device panel as a bordered child window with fixed height to prevent scrolling
-    std::string panel_label = "##DevicePanel" + std::to_string(device_index);
-    const float panel_height = 400.0f;  // Fixed height to ensure panels fit
-    ImGui::BeginChild(panel_label.c_str(), ImVec2(panel_width, panel_height), true);
+    // Draw an inline bordered panel using BeginGroup + draw list — no fixed height, expands to content
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    const float pad = 8.0f;
+    const float rounding = 4.0f;
+    const ImVec2 panel_tl = ImGui::GetCursorScreenPos();
+
+    // Indent content inside the border
+    ImGui::SetCursorScreenPos(ImVec2(panel_tl.x + pad, panel_tl.y + pad));
+    ImGui::BeginGroup();
+    ImGui::PushItemWidth(panel_width - pad * 2.0f);
 
     // Device header
     std::string device_label = std::string(device.role);
@@ -534,7 +636,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     // Position
     ImGui::Text("Position:");
     float pos[3] = {pose.position.x, pose.position.y, pose.position.z};
-    ImGui::SetNextItemWidth(-1);
+    ImGui::SetNextItemWidth(-FLT_MIN);
     if (ImGui::DragFloat3("##Position", pos, 0.01f, -10.0f, 10.0f, "%.2f")) {
         pose.position = {pos[0], pos[1], pos[2]};
         simulator_->SetDevicePose(device.user_path, pose, is_active);
@@ -566,7 +668,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     float yaw = std::atan2(siny_cosp, cosy_cosp);
 
     float euler[3] = {roll * 57.2958f, pitch * 57.2958f, yaw * 57.2958f};  // Convert to degrees
-    ImGui::SetNextItemWidth(-1);
+    ImGui::SetNextItemWidth(-FLT_MIN);
     if (ImGui::DragFloat3("##Orientation", euler, 1.0f, -180.0f, 180.0f, "%.1f°")) {
         // Convert Euler back to quaternion
         float cy = std::cos(euler[2] * 0.0174533f * 0.5f);
@@ -587,7 +689,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::Spacing();
 
     // Reset button
-    if (ImGui::Button("Reset Pose", ImVec2(-1, 0))) {
+    if (ImGui::Button("Reset Pose", ImVec2(-FLT_MIN, 0))) {
         simulator_->SetDevicePose(device.user_path, device.default_pose, is_active);
     }
 
@@ -603,7 +705,18 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
         }
     }
 
-    ImGui::EndChild();
+    ImGui::PopItemWidth();
+    ImGui::EndGroup();
+
+    // Draw border rectangle around the rendered group
+    const ImVec2 group_br = ImGui::GetItemRectMax();
+    const ImVec2 panel_br = ImVec2(panel_tl.x + panel_width, group_br.y + pad);
+    draw_list->AddRect(panel_tl, panel_br, ImGui::ColorConvertFloat4ToU32(theme_colors.border), rounding);
+
+    // Advance cursor past the panel
+    ImGui::SetCursorScreenPos(ImVec2(panel_tl.x, panel_br.y));
+    ImGui::Dummy(ImVec2(panel_width, 0.0f));
+
     ImGui::PopID();
 }
 
