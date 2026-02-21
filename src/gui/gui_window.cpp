@@ -1,5 +1,8 @@
+#define NOMINMAX
+
 #include "gui_window.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
@@ -25,6 +28,22 @@ const int WINDOW_HEIGHT = 720;
 // GLFW error callback
 static void glfw_error_callback(int error, const char* description) {
     std::cerr << "GLFW Error " << error << ": " << description << std::endl;
+}
+
+// Show a tooltip anchored below the hovered item, with proper padding.
+// Behaves like OS tooltips: fixed position relative to the item, not following the cursor.
+static void ShowItemTooltip(const char* text) {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 6.0f));
+        // Position the tooltip just below the item rect
+        ImVec2 item_br = ImVec2(ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y + 4.0f);
+        ImGui::SetNextWindowPos(item_br, ImGuiCond_Always);
+        if (ImGui::BeginTooltip()) {
+            ImGui::TextUnformatted(text);
+            ImGui::EndTooltip();
+        }
+        ImGui::PopStyleVar();
+    }
 }
 
 GuiWindow::GuiWindow()
@@ -330,9 +349,7 @@ void GuiWindow::RenderFrame() {
             status_message_ = "Set as active OpenXR runtime (set XR_RUNTIME_JSON env var)";
 #endif
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Register ox simulator as the active OpenXR runtime on this system");
-        }
+        ShowItemTooltip("Register ox simulator as the active OpenXR runtime on this system");
 
         ImGui::SameLine(0, spacing);
 
@@ -348,9 +365,7 @@ void GuiWindow::RenderFrame() {
             status_message_ = *api_enabled_ ? "API Server enabled (port 8765)" : "API Server disabled";
         }
         if (api_on) ImGui::PopStyleColor(3);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Toggle HTTP API server on port 8765");
-        }
+        ShowItemTooltip("Toggle HTTP API server on port 8765");
 
         ImGui::SameLine(0, spacing);
 
@@ -500,18 +515,19 @@ void GuiWindow::RenderFramePreview() {
                 w_each = h_each * aspect;
             }
             const float y_off = (avail.y - h_each) * 0.5f;
-            const float x_off = (avail.x * 0.5f - w_each);
-            // Left eye
-            ImGui::SetCursorPos(ImVec2(x_off > 0.0f ? x_off : 0.0f, y_off));
+            const float left_x = std::max(0.0f, avail.x * 0.5f - w_each);
+            const float right_x = left_x + w_each;
+            ImGui::SetCursorPos(ImVec2(left_x, y_off));
             if (preview_textures_[0]) {
-                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[0], ImVec2(w_each, h_each));
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[0], ImVec2(w_each, h_each), ImVec2(0, 1),
+                             ImVec2(1, 0));
             } else {
                 ImGui::Dummy(ImVec2(w_each, h_each));
             }
-            ImGui::SameLine(0, 0);
-            // Right eye
+            ImGui::SetCursorPos(ImVec2(right_x, y_off));
             if (preview_textures_[1]) {
-                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[1], ImVec2(w_each, h_each));
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[1], ImVec2(w_each, h_each), ImVec2(0, 1),
+                             ImVec2(1, 0));
             } else {
                 ImGui::Dummy(ImVec2(w_each, h_each));
             }
@@ -530,7 +546,9 @@ void GuiWindow::RenderFramePreview() {
                 const float x_off = (avail.x - img_w) * 0.5f;
                 const float y_off = (avail.y - img_h) * 0.5f;
                 ImGui::SetCursorPos(ImVec2(x_off, y_off));
-                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(img_w, img_h));
+                // Flip UV vertically: OpenGL textures are stored bottom-up
+                ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(img_w, img_h), ImVec2(0, 1),
+                             ImVec2(1, 0));
             } else {
                 ImVec2 ts = ImGui::CalcTextSize(no_msg);
                 ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
@@ -576,7 +594,8 @@ void GuiWindow::UpdateFrameTextures() {
             std::cout << "[GUI] Created OpenGL texture " << preview_textures_[eye] << " for eye " << eye << std::endl;
         }
         glBindTexture(GL_TEXTURE_2D, preview_textures_[eye]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, frame_data->pixel_data[eye]);
+        // Use GL_RGB8 (no alpha) so transparent pixels from the app render as opaque
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, frame_data->pixel_data[eye]);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
     preview_width_ = w;
@@ -616,14 +635,10 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
         if (ImGui::Checkbox("Active", &active_toggle)) {
             simulator_->SetDevicePose(device.user_path, pose, active_toggle);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable/disable device tracking");
-        }
+        ShowItemTooltip("Enable/disable device tracking");
     } else {
         ImGui::TextColored(theme_colors.always_active_color, "Active: Always On");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("This device is always active");
-        }
+        ShowItemTooltip("This device is always active");
     }
 
     ImGui::Spacing();
