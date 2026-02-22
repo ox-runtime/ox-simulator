@@ -284,6 +284,57 @@ void GuiWindow::CleanupGraphics() {
     }
 }
 
+inline bool ToggleButton(const char* label, bool* v) {
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+
+    const float h = ImGui::GetFrameHeight();
+    const float w = h * 1.8f;
+    const float r = h * 0.5f;        // track rounding
+    const float knob_r = h * 0.40f;  // knob radius
+
+    ImGui::InvisibleButton(label, {w, h});
+
+    bool changed = false;
+    if (ImGui::IsItemClicked()) {
+        *v = !*v;
+        changed = true;
+    }
+
+    const bool hovered = ImGui::IsItemHovered();
+
+    ImVec4 col_on = hovered ? theme_colors.accent_hover : theme_colors.accent;
+    ImVec4 col_off = hovered ? theme_colors.surface1 : theme_colors.button_active;
+
+    ImU32 col_bg = ImGui::GetColorU32(*v ? col_on : col_off);
+    ImU32 col_knob = ImGui::GetColorU32(ImVec4(1.f, 1.f, 1.f, 1.f));
+
+    ImVec2 p_max = {pos.x + w, pos.y + h};
+
+    // Track
+    dl->AddRectFilled(pos, p_max, col_bg, r);
+
+    // Track border
+    ImU32 col_border = ImGui::GetColorU32(*v ? ImVec4(0.0f, 0.0f, 0.0f, 0.0f) : theme_colors.border);
+
+    dl->AddRect(pos, p_max, col_border, r, 0, 1.5f);
+
+    // Knob position
+    float knob_x = *v ? (pos.x + w - r) : (pos.x + r);
+    ImVec2 knob_center = {knob_x, pos.y + h * 0.5f};
+
+    // Knob
+    dl->AddCircleFilled(knob_center, knob_r, col_knob);
+    dl->AddCircle(knob_center, knob_r, IM_COL32(0, 0, 0, 100), 0, 1.f);
+
+    // Label
+    ImGui::SameLine();
+    ImGui::TextUnformatted(label);
+
+    return changed;
+}
+
 void GuiWindow::RenderFrame() {
     if (!window_) {
         return;
@@ -355,16 +406,16 @@ void GuiWindow::RenderFrame() {
 
         // "Enable API Server" toggle button
         bool api_on = *api_enabled_;
-        if (api_on) {
-            ImGui::PushStyleColor(ImGuiCol_Button, theme_colors.accent);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, theme_colors.accent_hover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, theme_colors.accent_active);
+        // if (api_on) {
+        //     ImGui::PushStyleColor(ImGuiCol_Button, theme_colors.accent);
+        //     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, theme_colors.accent_hover);
+        //     ImGui::PushStyleColor(ImGuiCol_ButtonActive, theme_colors.accent_active);
+        // }
+        if (ToggleButton("API Server", &api_on)) {
+            *api_enabled_ = api_on;
+            status_message_ = api_on ? "API Server enabled (port 8765)" : "API Server disabled";
         }
-        if (ImGui::Button(api_on ? "API Server: ON" : "API Server: OFF", ImVec2(btn_api_w, 0))) {
-            *api_enabled_ = !*api_enabled_;
-            status_message_ = *api_enabled_ ? "API Server enabled (port 8765)" : "API Server disabled";
-        }
-        if (api_on) ImGui::PopStyleColor(3);
+        // if (api_on) ImGui::PopStyleColor(3);
         ShowItemTooltip("Toggle HTTP API server on port 8765");
 
         ImGui::SameLine(0, spacing);
@@ -473,7 +524,7 @@ void GuiWindow::RenderFramePreview() {
     UpdateFrameTextures();
 
     const ImVec2 region = ImGui::GetContentRegionAvail();
-    const float toolbar_h = ImGui::GetFrameHeightWithSpacing();
+    const float toolbar_h = 30.0f;
     const float content_h = region.y - toolbar_h;
     const bool has_image = preview_textures_valid_ && preview_width_ > 0 && preview_height_ > 0;
 
