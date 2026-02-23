@@ -285,6 +285,17 @@ void GuiWindow::CleanupGraphics() {
     }
 }
 
+inline bool Combo(const char* label, int* current_item, const char* const items[], int items_count) {
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    // Add padding to dropdown menu
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(style.FramePadding.x, 6.0f));
+    bool ret = ImGui::Combo(label, current_item, items, items_count);
+    ImGui::PopStyleVar();
+
+    return ret;
+}
+
 inline bool ToggleButton(const char* label, bool* v, bool labelOnRight = true) {
     ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -422,7 +433,7 @@ void GuiWindow::RenderFrame() {
         ImGui::SetNextItemWidth(combo_device_w);
         const char* device_names[] = {"Meta Quest 2", "Meta Quest 3", "HTC Vive", "Valve Index", "HTC Vive Tracker"};
         int current_device = selected_device_type_;
-        if (ImGui::Combo("##DeviceSelect", &current_device, device_names, IM_ARRAYSIZE(device_names))) {
+        if (Combo("##DeviceSelect", &current_device, device_names, IM_ARRAYSIZE(device_names))) {
             DeviceType new_type = static_cast<DeviceType>(current_device);
             const DeviceProfile& new_profile = GetDeviceProfile(new_type);
             if (simulator_->SwitchDevice(&new_profile)) {
@@ -536,7 +547,7 @@ void GuiWindow::RenderFramePreview() {
         ImGui::SameLine();
         ImGui::SetNextItemWidth(combo_w);
         const char* eye_names[] = {"Left", "Right", "Both"};
-        ImGui::Combo("##EyeSelect", &preview_eye_selection_, eye_names, 3);
+        Combo("##EyeSelect", &preview_eye_selection_, eye_names, 3);
     }
     ImGui::EndChild();
 
