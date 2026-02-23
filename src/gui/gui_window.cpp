@@ -285,9 +285,15 @@ void GuiWindow::CleanupGraphics() {
     }
 }
 
-inline bool ToggleButton(const char* label, bool* v) {
+inline bool ToggleButton(const char* label, bool* v, bool labelOnRight = true) {
     ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    if (!labelOnRight) {
+        ImGui::TextUnformatted(label);
+        ImGui::SameLine();
+    }
+
     ImVec2 pos = ImGui::GetCursorScreenPos();
 
     const float h = ImGui::GetFrameHeight();
@@ -329,9 +335,10 @@ inline bool ToggleButton(const char* label, bool* v) {
     dl->AddCircleFilled(knob_center, knob_r, col_knob);
     dl->AddCircle(knob_center, knob_r, IM_COL32(0, 0, 0, 100), 0, 1.f);
 
-    // Label
-    ImGui::SameLine();
-    ImGui::TextUnformatted(label);
+    if (labelOnRight) {
+        ImGui::SameLine();
+        ImGui::TextUnformatted(label);
+    }
 
     return changed;
 }
@@ -400,7 +407,7 @@ void GuiWindow::RenderFrame() {
 
         // "Enable API Server" toggle button
         bool api_on = *api_enabled_;
-        if (ToggleButton("API Server", &api_on)) {
+        if (ToggleButton("API Server:", &api_on, false)) {
             *api_enabled_ = api_on;
             status_message_ = api_on ? "API Server enabled (port 8765)" : "API Server disabled";
         }
