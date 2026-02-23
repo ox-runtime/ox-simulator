@@ -400,16 +400,10 @@ void GuiWindow::RenderFrame() {
 
         // "Enable API Server" toggle button
         bool api_on = *api_enabled_;
-        // if (api_on) {
-        //     ImGui::PushStyleColor(ImGuiCol_Button, theme_colors.accent);
-        //     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, theme_colors.accent_hover);
-        //     ImGui::PushStyleColor(ImGuiCol_ButtonActive, theme_colors.accent_active);
-        // }
         if (ToggleButton("API Server", &api_on)) {
             *api_enabled_ = api_on;
             status_message_ = api_on ? "API Server enabled (port 8765)" : "API Server disabled";
         }
-        // if (api_on) ImGui::PopStyleColor(3);
         ShowItemTooltip("Toggle HTTP API server on port 8765");
 
         ImGui::SameLine(0, spacing);
