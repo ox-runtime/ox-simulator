@@ -19,6 +19,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "styling.hpp"
+#include "utils.hpp"
 
 namespace ox_sim {
 
@@ -370,7 +371,7 @@ void GuiWindow::RenderFrame() {
         const float btn_api_w = 160.0f;
         const float lbl_device_w = ImGui::CalcTextSize("Device:").x + style.ItemSpacing.x;
         const float combo_device_w = 190.0f;
-        const float spacing = style.ItemSpacing.x * 2.0f;
+        const float spacing = style.ItemSpacing.x * 3.0f;
         const float total_w = btn_runtime_w + spacing + btn_api_w + spacing + lbl_device_w + combo_device_w;
         const ImVec2 avail = ImGui::GetContentRegionAvail();
 
@@ -380,27 +381,20 @@ void GuiWindow::RenderFrame() {
         if (center_y < 0.0f) center_y = 0.0f;
         ImGui::SetCursorPos(ImVec2(start_x, center_y));
 
-        // "Set as OpenXR Runtime" button
         if (ImGui::Button("Set as OpenXR Runtime", ImVec2(btn_runtime_w, 0))) {
-            // Register ox runtime as the active OpenXR runtime
-#ifdef _WIN32
-            HKEY hKey;
-            if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Khronos\\OpenXR\\1", 0, nullptr, REG_OPTION_NON_VOLATILE,
-                                KEY_SET_VALUE, nullptr, &hKey, nullptr) == ERROR_SUCCESS) {
-                // Runtime JSON path is typically alongside the executable; update if needed
-                const std::string runtime_json = "ox_openxr.json";
-                RegSetValueExA(hKey, "ActiveRuntime", 0, REG_SZ, reinterpret_cast<const BYTE*>(runtime_json.c_str()),
-                               static_cast<DWORD>(runtime_json.size() + 1));
-                RegCloseKey(hKey);
-                status_message_ = "Registered as active OpenXR runtime";
-            } else {
-                status_message_ = "Failed to set runtime (try running as Administrator)";
-            }
-#else
-            status_message_ = "Set as active OpenXR runtime (set XR_RUNTIME_JSON env var)";
-#endif
+            ox_sim::utils::SetAsOpenXRRuntime(status_message_);
         }
         ShowItemTooltip("Register ox simulator as the active OpenXR runtime on this system");
+
+        ImGui::SameLine();
+
+        if (ImGui::Button(ICON_FA_COPY "##copy_runtime_path")) {
+            glfwSetClipboardString(window_, ox_sim::utils::GetRuntimeJsonPath().string().c_str());
+            status_message_ = "Copied runtime path to clipboard";
+        }
+        ShowItemTooltip(
+            "Copy the path to the OpenXR runtime JSON file to clipboard. Set this as the XR_RUNTIME_JSON environment "
+            "variable.");
 
         ImGui::SameLine(0, spacing);
 
