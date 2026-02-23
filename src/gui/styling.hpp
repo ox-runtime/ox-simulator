@@ -44,6 +44,10 @@ extern "C" bool IsSystemDarkModeObjC();
 #include <X11/Xlib.h>
 #endif
 
+// fonts
+#include "IconsFontAwesome6.h"
+#include "fa_solid_900.h"
+
 namespace ox_sim {
 
 // UI color definitions for theming
@@ -161,6 +165,15 @@ inline void setup_fonts(ImGuiIO& io, GLFWwindow* window) {
     } else {
         io.FontDefault = io.Fonts->AddFontDefault();
     }
+
+    // Setup icons
+    ImFontConfig config;
+    config.MergeMode = true;
+    config.FontDataOwnedByAtlas = false;
+    config.GlyphMinAdvanceX = 13.0f;
+    static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
+    io.Fonts->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, 13.0f, &config,
+                                             icon_ranges);
 }
 
 // Detect if system is in dark mode (cross-platform)
