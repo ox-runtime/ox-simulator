@@ -62,6 +62,7 @@ set(GUI_INCLUDE_DIRS
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${glfw_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party
     PARENT_SCOPE
 )
 
