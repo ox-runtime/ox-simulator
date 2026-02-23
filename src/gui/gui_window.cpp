@@ -416,7 +416,7 @@ void GuiWindow::RenderFrame() {
 
         // Device profile dropdown
         ImGui::AlignTextToFramePadding();
-        ImGui::Text("Device:");
+        ImGui::Text("Simulated Device:");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(combo_device_w);
         const char* device_names[] = {"Meta Quest 2", "Meta Quest 3", "HTC Vive", "Valve Index", "HTC Vive Tracker"};
