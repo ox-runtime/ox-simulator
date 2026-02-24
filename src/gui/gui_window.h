@@ -1,14 +1,10 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <string>
-#include <thread>
 
 #include "simulator_core.h"
-
-// Forward declarations to avoid including GLFW/ImGui headers in header
-struct GLFWwindow;
+#include "vog.h"
 
 namespace ox_sim {
 
@@ -17,59 +13,41 @@ class GuiWindow {
     GuiWindow();
     ~GuiWindow();
 
-    // Start GUI window (creates window and starts rendering thread)
-    // device_profile_ptr: pointer to the current device profile pointer (can be updated for device switching)
-    // api_enabled: pointer to shared API enable state
+    // Start the GUI window. device_profile_ptr points at the current device profile
+    // pointer so that device switching is reflected immediately; api_enabled is a
+    // shared flag for the HTTP API server toggle.
     bool Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, bool* api_enabled);
 
-    // Stop GUI (signals thread to exit and waits for it)
+    // Signal the window to close and wait for it to finish.
     void Stop();
 
-    bool IsRunning() const { return running_; }
+    bool IsRunning() const { return window_.IsRunning(); }
 
    private:
-    // GUI rendering thread function
-    void RenderLoop();
-
-    // Initialize OpenGL and ImGui
-    bool InitializeGraphics();
-
-    // Cleanup OpenGL and ImGui
-    void CleanupGraphics();
-
-    // Render one frame
+    // ImGui widget callback — called once per frame by vog::Window.
     void RenderFrame();
 
-    // Render device-specific panels
     void RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width);
-
-    // Render component controls
     void RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index);
-
-    // Render frame preview
     void RenderFramePreview();
-
-    // Update frame preview textures from frame data
     void UpdateFrameTextures();
 
-    SimulatorCore* simulator_;
-    const DeviceProfile** device_profile_ptr_;  // Pointer to device profile pointer (for switching)
-    bool* api_enabled_;                         // Pointer to API enable state (shared with driver)
-    std::atomic<bool> running_;
-    std::atomic<bool> should_stop_;
-    std::thread render_thread_;
-    GLFWwindow* window_;
+    vog::Window window_;
+
+    SimulatorCore* simulator_ = nullptr;
+    const DeviceProfile** device_profile_ptr_ = nullptr;
+    bool* api_enabled_ = nullptr;
 
     // UI state
-    int selected_device_type_;   // For device dropdown
-    int preview_eye_selection_;  // 0=Left, 1=Right, 2=Both
-    std::string status_message_;
+    int selected_device_type_ = 0;
+    int preview_eye_selection_ = 0;
+    std::string status_message_{"Ready"};
 
-    // Frame preview textures
-    uint32_t preview_textures_[2];  // OpenGL texture IDs for left and right eye
-    uint32_t preview_width_;
-    uint32_t preview_height_;
-    bool preview_textures_valid_;
+    // Frame preview textures (OpenGL texture IDs)
+    uint32_t preview_textures_[2] = {0, 0};
+    uint32_t preview_width_ = 0;
+    uint32_t preview_height_ = 0;
+    bool preview_textures_valid_ = false;
 };
 
 }  // namespace ox_sim
