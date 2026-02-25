@@ -119,5 +119,18 @@ static void SetAsOpenXRRuntime(std::string& status_message) {
 #endif
 }
 
+template <typename T>
+constexpr T pi = T(3.14159265358979323846L);
+
+template <typename T>
+constexpr T DegToRad(T deg) {
+    return deg * pi<T> / T(180);
+}
+
+template <typename T>
+constexpr T RadToDeg(T rad) {
+    return rad * T(180) / pi<T>;
+}
+
 }  // namespace utils
 }  // namespace ox_sim

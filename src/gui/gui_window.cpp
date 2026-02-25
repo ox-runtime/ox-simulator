@@ -8,6 +8,8 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "device_profiles.h"
@@ -15,6 +17,9 @@
 #include "imgui_impl_opengl3.h"
 #include "utils.hpp"
 #include "vog.h"
+
+using ox_sim::utils::DegToRad;
+using ox_sim::utils::RadToDeg;
 
 namespace ox_sim {
 
@@ -149,7 +154,11 @@ void GuiWindow::RenderFrame() {
     const float status_bar_h = 30.0f;
     const float main_area_h = content_size.y - top_toolbar_h - status_bar_h - style.ItemSpacing.y;
 
-    // Clamp sidebar width so both panels stay usable
+    // Apply the splitter drag delta BEFORE computing layout so both panels
+    // use the same width within a single frame (eliminates one-frame lag).
+    if (last_splitter_active_) {
+        sidebar_w_ -= ImGui::GetIO().MouseDelta.x;
+    }
     sidebar_w_ = std::clamp(sidebar_w_, 200.0f, content_size.x - 200.0f - splitter_w);
 
     const float preview_w = content_size.x - sidebar_w_ - splitter_w;
@@ -168,10 +177,7 @@ void GuiWindow::RenderFrame() {
     ImGui::SetCursorPos(ImVec2(preview_w, top_toolbar_h));
     ImGui::InvisibleButton("##splitter", ImVec2(splitter_w, main_area_h));
     if (ImGui::IsItemHovered() || ImGui::IsItemActive()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-    if (ImGui::IsItemActive()) {
-        sidebar_w_ -= ImGui::GetIO().MouseDelta.x;
-        sidebar_w_ = std::clamp(sidebar_w_, 200.0f, content_size.x - 200.0f - splitter_w);
-    }
+    last_splitter_active_ = ImGui::IsItemActive();  // consumed next frame, before layout
     {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         ImVec2 tl = ImGui::GetItemRectMin();
@@ -221,6 +227,7 @@ void GuiWindow::RenderFrame() {
 
 void GuiWindow::RenderFramePreview() {
     using vog::widgets::Combo;
+    const vog::ThemeColors& tc = vog::GetThemeColors();
 
     UpdateFrameTextures();
 
@@ -249,7 +256,8 @@ void GuiWindow::RenderFramePreview() {
     }
     ImGui::EndChild();
 
-    ImGui::BeginChild("PreviewContent", ImVec2(0, content_h), false, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("PreviewContent", ImVec2(0, content_h), false,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     {
         const ImVec2 avail = ImGui::GetContentRegionAvail();
 
@@ -272,14 +280,14 @@ void GuiWindow::RenderFramePreview() {
             ImGui::SetCursorPos(ImVec2(left_x, y_off));
             if (preview_textures_[0]) {
                 ImGui::Image((ImTextureID)(intptr_t)preview_textures_[0], ImVec2(w_each, h_each), ImVec2(0, 1),
-                             ImVec2(1, 0));
+                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border);
             } else {
                 ImGui::Dummy(ImVec2(w_each, h_each));
             }
             ImGui::SetCursorPos(ImVec2(right_x, y_off));
             if (preview_textures_[1]) {
                 ImGui::Image((ImTextureID)(intptr_t)preview_textures_[1], ImVec2(w_each, h_each), ImVec2(0, 1),
-                             ImVec2(1, 0));
+                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border);
             } else {
                 ImGui::Dummy(ImVec2(w_each, h_each));
             }
@@ -298,7 +306,7 @@ void GuiWindow::RenderFramePreview() {
                 const float y_off = (avail.y - img_h) * 0.5f;
                 ImGui::SetCursorPos(ImVec2(x_off, y_off));
                 ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(img_w, img_h), ImVec2(0, 1),
-                             ImVec2(1, 0));
+                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border);
             } else {
                 ImVec2 ts = ImGui::CalcTextSize(no_msg);
                 ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
@@ -385,7 +393,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::Spacing();
     ImGui::Separator();
 
-    // Position and Rotation — fixed label column so both DragFloat3 start at the same X.
+    // Position and Rotation — fixed label column so both float-triple rows start at the same X.
     // drag_w is computed live (after SameLine) so it adapts to any sidebar width.
     const float pos_lbl_col = std::max(ImGui::CalcTextSize("Position:").x, ImGui::CalcTextSize("Rotation:").x) + 8.0f;
 
@@ -400,41 +408,14 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
         simulator_->SetDevicePose(device.user_path, pose, is_active);
     }
 
+    // Rotation — gimbal-lock-free via per-device cached Euler state.
+    // Each drag delta is applied as an incremental world-space rotation so axes
+    // remain independent regardless of the current orientation.
     ImGui::SetCursorPosX(content_start_x);
     ImGui::AlignTextToFramePadding();
     ImGui::Text("Rotation:");
     ImGui::SameLine(content_start_x + pos_lbl_col);
-
-    float x = pose.orientation.x, y = pose.orientation.y;
-    float z = pose.orientation.z, w = pose.orientation.w;
-
-    float sinr_cosp = 2.0f * (w * x + y * z);
-    float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
-    float roll = std::atan2(sinr_cosp, cosr_cosp);
-
-    float sinp = 2.0f * (w * y - z * x);
-    float pitch = std::abs(sinp) >= 1.0f ? std::copysign(3.14159265f / 2.0f, sinp) : std::asin(sinp);
-
-    float siny_cosp = 2.0f * (w * z + x * y);
-    float cosy_cosp = 1.0f - 2.0f * (y * y + z * z);
-    float yaw = std::atan2(siny_cosp, cosy_cosp);
-
-    float euler[3] = {roll * 57.2958f, pitch * 57.2958f, yaw * 57.2958f};
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - pad);
-    if (ImGui::DragFloat3("##Orientation", euler, 1.0f, -180.0f, 180.0f, "%.2f\xc2\xb0")) {
-        float cy = std::cos(euler[2] * 0.0174533f * 0.5f);
-        float sy = std::sin(euler[2] * 0.0174533f * 0.5f);
-        float cp = std::cos(euler[1] * 0.0174533f * 0.5f);
-        float sp = std::sin(euler[1] * 0.0174533f * 0.5f);
-        float cr = std::cos(euler[0] * 0.0174533f * 0.5f);
-        float sr = std::sin(euler[0] * 0.0174533f * 0.5f);
-
-        pose.orientation.w = cr * cp * cy + sr * sp * sy;
-        pose.orientation.x = sr * cp * cy - cr * sp * sy;
-        pose.orientation.y = cr * sp * cy + sr * cp * sy;
-        pose.orientation.z = cr * cp * sy - sr * sp * cy;
-        simulator_->SetDevicePose(device.user_path, pose, is_active);
-    }
+    RenderRotationControl(device, device_index, pose, is_active);
 
     ImGui::Spacing();
     if (ImGui::Button("Reset Pose", ImVec2(ImGui::GetContentRegionAvail().x - pad, 0))) {
@@ -542,6 +523,76 @@ void GuiWindow::RenderComponentControl(const DeviceDef& device, const ComponentD
 
     ImGui::PopID();
     ImGui::Spacing();
+}
+
+// Rotation control with gimbal-lock-free incremental updates via cached Euler angles per device.
+void GuiWindow::RenderRotationControl(const DeviceDef& device, int device_index, OxPose& pose, bool is_active) {
+    const std::string key = std::string(device.user_path) + "_" + std::to_string(device_index);
+    auto it = euler_cache_.find(key);
+    if (it == euler_cache_.end()) {
+        EulerCache ec;
+        ec.quat = pose.orientation;
+        QuatToEuler(pose.orientation, ec.euler);
+        euler_cache_[key] = ec;
+    }
+    auto& ec = euler_cache_[key];
+
+    // If the quaternion changed externally (Reset Pose / API), re-derive Euler.
+    if (ec.quat.x != pose.orientation.x || ec.quat.y != pose.orientation.y || ec.quat.z != pose.orientation.z ||
+        ec.quat.w != pose.orientation.w) {
+        QuatToEuler(pose.orientation, ec.euler);
+        ec.quat = pose.orientation;
+    }
+
+    // rot[0] = pitch, rot[1] = yaw, rot[2] = roll
+    float rot[3] = {ec.euler.y, ec.euler.z, ec.euler.x};
+    const float pad = 8.0f;
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - pad);
+    if (ImGui::DragFloat3("##Rotation", rot, 1.0f, -FLT_MAX, FLT_MAX, "%.2f°")) {
+        // Apply each axis delta as an incremental world-space rotation so
+        // the three axes stay independent (no gimbal-lock singularity).
+        float dp = DegToRad(rot[0] - ec.euler.y);  // pitch delta, radians
+        float dy = DegToRad(rot[1] - ec.euler.z);  // yaw delta
+        float dr = DegToRad(rot[2] - ec.euler.x);  // roll delta
+
+        OxQuaternion q = pose.orientation;
+        ApplyRotation(q, OxVector3f{1, 0, 0}, dp);
+        ApplyRotation(q, OxVector3f{0, 1, 0}, dy);
+        ApplyRotation(q, OxVector3f{0, 0, 1}, dr);
+        pose.orientation = q;
+
+        ec.euler = {rot[0], rot[1], rot[2]};
+        ec.quat = q;
+        simulator_->SetDevicePose(device.user_path, pose, is_active);
+    }
+}
+
+// Convert quaternion to Euler angles (in degrees), using the Tait-Bryan Yaw-Pitch-Roll convention (Y=X=Z=0 at
+// identity).
+void GuiWindow::QuatToEuler(const OxQuaternion& q, OxVector3f& euler) {
+    float sinr_cosp = 2.0f * (q.w * q.x + q.y * q.z);
+    float cosr_cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
+    float sinp = 2.0f * (q.w * q.y - q.z * q.x);
+    float siny_cosp = 2.0f * (q.w * q.z + q.x * q.y);
+    float cosy_cosp = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
+    euler.x = RadToDeg(std::atan2(sinr_cosp, cosr_cosp));                                         // roll
+    euler.y = (std::abs(sinp) >= 1.0f ? std::copysign(90.0f, sinp) : RadToDeg(std::asin(sinp)));  // pitch
+    euler.z = RadToDeg(std::atan2(siny_cosp, cosy_cosp));                                         // yaw
+}
+
+// Apply an incremental rotation (angle in radians) around the given axis to the input quaternion.
+void GuiWindow::ApplyRotation(OxQuaternion& q, const OxVector3f& a, float angle) {
+    if (angle == 0.0f) return;
+    float s = std::sin(angle * 0.5f), c = std::cos(angle * 0.5f);
+    float nx = c * q.x + s * (a.x * q.w + a.y * q.z - a.z * q.y);
+    float ny = c * q.y + s * (a.y * q.w + a.z * q.x - a.x * q.z);
+    float nz = c * q.z + s * (a.z * q.w + a.x * q.y - a.y * q.x);
+    float nw = c * q.w - s * (a.x * q.x + a.y * q.y + a.z * q.z);
+    float len = std::sqrt(nx * nx + ny * ny + nz * nz + nw * nw);
+    q.x = nx / len;
+    q.y = ny / len;
+    q.z = nz / len;
+    q.w = nw / len;
 }
 
 }  // namespace ox_sim
