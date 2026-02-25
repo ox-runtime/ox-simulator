@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <iostream>
+#include <vector>
 
 #include "device_profiles.h"
 #include "frame_data.h"
@@ -142,14 +144,17 @@ void GuiWindow::RenderFrame() {
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 
-    // ========== MAIN AREA: Preview (left) + Sidebar (right) ==========
-    const float sidebar_w = 360.0f;
+    // ========== MAIN AREA: Preview (left) + Splitter + Sidebar (right) ==========
+    const float splitter_w = 5.0f;
     const float status_bar_h = 30.0f;
-    const float preview_w = content_size.x - sidebar_w - style.ItemSpacing.x;
     const float main_area_h = content_size.y - top_toolbar_h - status_bar_h - style.ItemSpacing.y;
 
-    ImGui::SetCursorPosY(top_toolbar_h);
+    // Clamp sidebar width so both panels stay usable
+    sidebar_w_ = std::clamp(sidebar_w_, 200.0f, content_size.x - 200.0f - splitter_w);
 
+    const float preview_w = content_size.x - sidebar_w_ - splitter_w;
+
+    // ---- Preview ----
     const float preview_padding = 5.0f;
     ImGui::SetCursorPos(ImVec2(preview_padding, top_toolbar_h));
     ImGui::BeginChild("PreviewArea", ImVec2(preview_w - preview_padding, main_area_h), false,
@@ -159,13 +164,33 @@ void GuiWindow::RenderFrame() {
     }
     ImGui::EndChild();
 
-    ImGui::SetCursorPos(ImVec2(preview_w + style.ItemSpacing.x, top_toolbar_h));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    ImGui::BeginChild("Sidebar", ImVec2(sidebar_w, main_area_h), false);
+    // ---- Splitter handle ----
+    ImGui::SetCursorPos(ImVec2(preview_w, top_toolbar_h));
+    ImGui::InvisibleButton("##splitter", ImVec2(splitter_w, main_area_h));
+    if (ImGui::IsItemHovered() || ImGui::IsItemActive()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+    if (ImGui::IsItemActive()) {
+        sidebar_w_ -= ImGui::GetIO().MouseDelta.x;
+        sidebar_w_ = std::clamp(sidebar_w_, 200.0f, content_size.x - 200.0f - splitter_w);
+    }
+    {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImVec2 tl = ImGui::GetItemRectMin();
+        ImVec2 br = ImGui::GetItemRectMax();
+        float line_x = std::round((tl.x + br.x) * 0.5f);
+        ImU32 col = ImGui::IsItemHovered() || ImGui::IsItemActive() ? ImGui::GetColorU32(tc.accent)
+                                                                    : ImGui::GetColorU32(tc.surface);
+        dl->AddLine(ImVec2(line_x, tl.y), ImVec2(line_x, br.y), col, 3.0f);
+    }
+
+    // ---- Sidebar ----
+    ImGui::SetCursorPos(ImVec2(preview_w + splitter_w, top_toolbar_h));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
+    ImGui::BeginChild("Sidebar", ImVec2(sidebar_w_, main_area_h), false);
     {
         if (*device_profile_ptr_) {
             const DeviceProfile* profile = *device_profile_ptr_;
-            const float inner_w = sidebar_w - style.ScrollbarSize - style.WindowPadding.x * 2.0f;
+            // Use the actual usable width so the panel border always fills edge-to-edge.
+            const float inner_w = ImGui::GetContentRegionAvail().x;
             for (size_t i = 0; i < profile->devices.size(); i++) {
                 if (i > 0) ImGui::Spacing();
                 RenderDevicePanel(profile->devices[i], static_cast<int>(i), inner_w);
@@ -330,6 +355,9 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::BeginGroup();
     ImGui::PushItemWidth(panel_width - pad * 2.0f);
 
+    // Capture window-relative X so all columns can be rooted consistently.
+    const float content_start_x = ImGui::GetCursorPosX();
+
     std::string device_label = std::string(device.role);
     ImGui::TextColored(tc.accent, "%s", device_label.c_str());
     ImGui::SameLine();
@@ -342,7 +370,10 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
 
     if (!device.always_active) {
         bool active_toggle = is_active;
-        if (ImGui::Checkbox("Active", &active_toggle)) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Active");
+        ImGui::SameLine();
+        if (vog::widgets::ToggleButton("", &active_toggle)) {
             simulator_->SetDevicePose(device.user_path, pose, active_toggle);
         }
         ShowItemTooltip("Enable/disable device tracking");
@@ -354,19 +385,25 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::Spacing();
     ImGui::Separator();
 
+    // Position and Rotation — fixed label column so both DragFloat3 start at the same X.
+    // drag_w is computed live (after SameLine) so it adapts to any sidebar width.
+    const float pos_lbl_col = std::max(ImGui::CalcTextSize("Position:").x, ImGui::CalcTextSize("Rotation:").x) + 8.0f;
+
+    ImGui::SetCursorPosX(content_start_x);
     ImGui::AlignTextToFramePadding();
     ImGui::Text("Position:");
-    ImGui::SameLine();
+    ImGui::SameLine(content_start_x + pos_lbl_col);
     float pos[3] = {pose.position.x, pose.position.y, pose.position.z};
-    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - pad);
     if (ImGui::DragFloat3("##Position", pos, 0.01f, -10.0f, 10.0f, "%.4f")) {
         pose.position = {pos[0], pos[1], pos[2]};
         simulator_->SetDevicePose(device.user_path, pose, is_active);
     }
 
+    ImGui::SetCursorPosX(content_start_x);
     ImGui::AlignTextToFramePadding();
     ImGui::Text("Rotation:");
-    ImGui::SameLine();
+    ImGui::SameLine(content_start_x + pos_lbl_col);
 
     float x = pose.orientation.x, y = pose.orientation.y;
     float z = pose.orientation.z, w = pose.orientation.w;
@@ -383,7 +420,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     float yaw = std::atan2(siny_cosp, cosy_cosp);
 
     float euler[3] = {roll * 57.2958f, pitch * 57.2958f, yaw * 57.2958f};
-    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - pad);
     if (ImGui::DragFloat3("##Orientation", euler, 1.0f, -180.0f, 180.0f, "%.2f\xc2\xb0")) {
         float cy = std::cos(euler[2] * 0.0174533f * 0.5f);
         float sy = std::sin(euler[2] * 0.0174533f * 0.5f);
@@ -400,17 +437,45 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     }
 
     ImGui::Spacing();
-    if (ImGui::Button("Reset Pose", ImVec2(-FLT_MIN, 0))) {
+    if (ImGui::Button("Reset Pose", ImVec2(ImGui::GetContentRegionAvail().x - pad, 0))) {
         simulator_->SetDevicePose(device.user_path, device.default_pose, is_active);
     }
 
-    if (!device.components.empty()) {
+    // ---- Input Components ----
+    // Predicate: should this component be shown in the UI for this device?
+    //   - Filters out hand-restricted components that don't match the device's user_path.
+    //   - Hides VEC2 "parent" components whose x/y axes are exposed as linked FLOATs
+    //     (those should be edited through the individual axis sliders, not as a 2D widget).
+    auto ShouldShowComponent = [&](const ComponentDef& comp) -> bool {
+        // Hand restriction check
+        if (comp.hand_restriction != nullptr && std::strcmp(comp.hand_restriction, device.user_path) != 0) return false;
+        // Hide VEC2 components that have linked FLOAT axis children
+        if (comp.type == ComponentType::VEC2) {
+            for (const auto& c : device.components) {
+                if (c.linked_vec2_path != nullptr && std::strcmp(c.linked_vec2_path, comp.path) == 0) return false;
+            }
+        }
+        return true;
+    };
+
+    // Collect visible components and compute the label column width in one pass.
+    std::vector<const ComponentDef*> visible_comps;
+    float label_col_w = 0.0f;
+    for (const auto& comp : device.components) {
+        if (!ShouldShowComponent(comp)) continue;
+        visible_comps.push_back(&comp);
+        float lw = ImGui::CalcTextSize(comp.description).x + ImGui::CalcTextSize(":").x;
+        if (lw > label_col_w) label_col_w = lw;
+    }
+    label_col_w += 20.0f;  // gap between right edge of label and left edge of control
+
+    if (!visible_comps.empty()) {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::TextColored(tc.warning, "Input Components");
         ImGui::Spacing();
-        for (const auto& component : device.components) {
-            RenderComponentControl(device, component, device_index);
+        for (const ComponentDef* comp : visible_comps) {
+            RenderComponentControl(device, *comp, device_index, label_col_w, content_start_x);
         }
     }
 
@@ -427,14 +492,23 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::PopID();
 }
 
-void GuiWindow::RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index) {
+void GuiWindow::RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index,
+                                       float label_col_w, float content_start_x) {
     ImGui::PushID(component.path);
+
+    // Right-align the label text within the label column.
+    const float lw = ImGui::CalcTextSize(component.description).x + ImGui::CalcTextSize(":").x;
+    ImGui::SetCursorPosX(content_start_x + label_col_w - lw);
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s:", component.description);
+    ImGui::SameLine(content_start_x + label_col_w);
 
     switch (component.type) {
         case ComponentType::BOOLEAN: {
             bool value = false;
             simulator_->GetInputStateBoolean(device.user_path, component.path, &value);
-            if (ImGui::Checkbox(component.description, &value)) {
+            // Use empty label so no label text is rendered (we already drew the description above).
+            if (vog::widgets::ToggleButton("", &value)) {
                 simulator_->SetInputStateBoolean(device.user_path, component.path, value);
             }
             break;
@@ -442,23 +516,21 @@ void GuiWindow::RenderComponentControl(const DeviceDef& device, const ComponentD
         case ComponentType::FLOAT: {
             float value = 0.0f;
             simulator_->GetInputStateFloat(device.user_path, component.path, &value);
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("%s:", component.description);
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::SliderFloat("##value", &value, 0.0f, 1.0f, "%.2f")) {
+            // Linked axis components (thumbstick/trackpad x-y) have a -1..1 range;
+            // all other FLOAT components (triggers, grips) use 0..1.
+            const float v_min = (component.linked_vec2_path != nullptr) ? -1.0f : 0.0f;
+            ImGui::SetNextItemWidth(150.0f);
+            if (ImGui::SliderFloat("##value", &value, v_min, 1.0f, "%.2f")) {
                 simulator_->SetInputStateFloat(device.user_path, component.path, value);
             }
             break;
         }
         case ComponentType::VEC2: {
+            // Standalone VEC2 (no linked FLOAT axes); show as a double-width slider pair.
             OxVector2f value = {0.0f, 0.0f};
             simulator_->GetInputStateVec2(device.user_path, component.path, &value);
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("%s:", component.description);
-            ImGui::SameLine();
             float vec2[2] = {value.x, value.y};
-            ImGui::SetNextItemWidth(-1);
+            ImGui::SetNextItemWidth(100.0f * 2.0f + ImGui::GetStyle().ItemInnerSpacing.x);
             if (ImGui::SliderFloat2("##vec2", vec2, -1.0f, 1.0f, "%.2f")) {
                 value.x = vec2[0];
                 value.y = vec2[1];

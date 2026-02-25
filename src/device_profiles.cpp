@@ -14,21 +14,21 @@ static const std::vector<ComponentDef> OCULUS_TOUCH_COMPONENTS = {
     {"/input/trigger/touch", ComponentType::BOOLEAN, "Trigger touch"},
     // Grip
     {"/input/squeeze/value", ComponentType::FLOAT, "Grip/squeeze"},
-    // Thumbstick
-    {"/input/thumbstick", ComponentType::VEC2, "Thumbstick 2D position"},
-    {"/input/thumbstick/x", ComponentType::FLOAT, "Thumbstick X axis"},
-    {"/input/thumbstick/y", ComponentType::FLOAT, "Thumbstick Y axis"},
+    // Thumbstick — VEC2 parent + linked FLOAT axes
+    {"/input/thumbstick",    ComponentType::VEC2,    "Thumbstick 2D position"},
+    {"/input/thumbstick/x",  ComponentType::FLOAT,   "Thumbstick X axis",  nullptr, "/input/thumbstick", Vec2Axis::X},
+    {"/input/thumbstick/y",  ComponentType::FLOAT,   "Thumbstick Y axis",  nullptr, "/input/thumbstick", Vec2Axis::Y},
     {"/input/thumbstick/click", ComponentType::BOOLEAN, "Thumbstick click"},
     {"/input/thumbstick/touch", ComponentType::BOOLEAN, "Thumbstick touch"},
-    // Buttons - A/X on right, B/Y on left (using generic a/b names)
-    {"/input/x/click", ComponentType::BOOLEAN, "X button click"}, // left controller
-    {"/input/x/touch", ComponentType::BOOLEAN, "X button touch"}, // left controller
-    {"/input/y/click", ComponentType::BOOLEAN, "Y button click"}, // left controller
-    {"/input/y/touch", ComponentType::BOOLEAN, "Y button touch"}, // left controller
-    {"/input/a/click", ComponentType::BOOLEAN, "A button click"}, // right controller
-    {"/input/a/touch", ComponentType::BOOLEAN, "A button touch"}, // right controller
-    {"/input/b/click", ComponentType::BOOLEAN, "B button click"}, // right controller
-    {"/input/b/touch", ComponentType::BOOLEAN, "B button touch"}, // right controller
+    // Buttons - X/Y on left, A/B on right
+    {"/input/x/click", ComponentType::BOOLEAN, "X button click", "/user/hand/left"},
+    {"/input/x/touch", ComponentType::BOOLEAN, "X button touch", "/user/hand/left"},
+    {"/input/y/click", ComponentType::BOOLEAN, "Y button click", "/user/hand/left"},
+    {"/input/y/touch", ComponentType::BOOLEAN, "Y button touch", "/user/hand/left"},
+    {"/input/a/click", ComponentType::BOOLEAN, "A button click", "/user/hand/right"},
+    {"/input/a/touch", ComponentType::BOOLEAN, "A button touch", "/user/hand/right"},
+    {"/input/b/click", ComponentType::BOOLEAN, "B button click", "/user/hand/right"},
+    {"/input/b/touch", ComponentType::BOOLEAN, "B button touch", "/user/hand/right"},
     // Menu button
     {"/input/menu/click", ComponentType::BOOLEAN, "Menu button click"},
 };
@@ -40,10 +40,10 @@ static const std::vector<ComponentDef> VIVE_CONTROLLER_COMPONENTS = {
     {"/input/trigger/click", ComponentType::BOOLEAN, "Trigger click"},
     // Grip
     {"/input/squeeze/click", ComponentType::BOOLEAN, "Grip button click"},
-    // Trackpad
-    {"/input/trackpad", ComponentType::VEC2, "Trackpad 2D position"},
-    {"/input/trackpad/x", ComponentType::FLOAT, "Trackpad X axis"},
-    {"/input/trackpad/y", ComponentType::FLOAT, "Trackpad Y axis"},
+    // Trackpad — VEC2 parent + linked FLOAT axes
+    {"/input/trackpad",   ComponentType::VEC2,  "Trackpad 2D position"},
+    {"/input/trackpad/x", ComponentType::FLOAT, "Trackpad X axis", nullptr, "/input/trackpad", Vec2Axis::X},
+    {"/input/trackpad/y", ComponentType::FLOAT, "Trackpad Y axis", nullptr, "/input/trackpad", Vec2Axis::Y},
     {"/input/trackpad/click", ComponentType::BOOLEAN, "Trackpad click"},
     {"/input/trackpad/touch", ComponentType::BOOLEAN, "Trackpad touch"},
     // Menu button
@@ -59,16 +59,16 @@ static const std::vector<ComponentDef> INDEX_CONTROLLER_COMPONENTS = {
     // Grip (force sensor)
     {"/input/squeeze/value", ComponentType::FLOAT, "Grip force"},
     {"/input/squeeze/force", ComponentType::FLOAT, "Grip force (alias)"},
-    // Thumbstick
-    {"/input/thumbstick", ComponentType::VEC2, "Thumbstick 2D position"},
-    {"/input/thumbstick/x", ComponentType::FLOAT, "Thumbstick X axis"},
-    {"/input/thumbstick/y", ComponentType::FLOAT, "Thumbstick Y axis"},
+    // Thumbstick — VEC2 parent + linked FLOAT axes
+    {"/input/thumbstick",    ComponentType::VEC2,    "Thumbstick 2D position"},
+    {"/input/thumbstick/x",  ComponentType::FLOAT,   "Thumbstick X axis",  nullptr, "/input/thumbstick", Vec2Axis::X},
+    {"/input/thumbstick/y",  ComponentType::FLOAT,   "Thumbstick Y axis",  nullptr, "/input/thumbstick", Vec2Axis::Y},
     {"/input/thumbstick/click", ComponentType::BOOLEAN, "Thumbstick click"},
     {"/input/thumbstick/touch", ComponentType::BOOLEAN, "Thumbstick touch"},
-    // Trackpad
-    {"/input/trackpad", ComponentType::VEC2, "Trackpad 2D position"},
-    {"/input/trackpad/x", ComponentType::FLOAT, "Trackpad X axis"},
-    {"/input/trackpad/y", ComponentType::FLOAT, "Trackpad Y axis"},
+    // Trackpad — VEC2 parent + linked FLOAT axes
+    {"/input/trackpad",      ComponentType::VEC2,    "Trackpad 2D position"},
+    {"/input/trackpad/x",    ComponentType::FLOAT,   "Trackpad X axis",    nullptr, "/input/trackpad", Vec2Axis::X},
+    {"/input/trackpad/y",    ComponentType::FLOAT,   "Trackpad Y axis",    nullptr, "/input/trackpad", Vec2Axis::Y},
     {"/input/trackpad/force", ComponentType::FLOAT, "Trackpad force"},
     {"/input/trackpad/touch", ComponentType::BOOLEAN, "Trackpad touch"},
     // Buttons

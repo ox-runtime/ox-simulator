@@ -28,7 +28,8 @@ class GuiWindow {
     void RenderFrame();
 
     void RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width);
-    void RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index);
+    void RenderComponentControl(const DeviceDef& device, const ComponentDef& component, int device_index,
+                                float label_col_w, float content_start_x);
     void RenderFramePreview();
     void UpdateFrameTextures();
 
@@ -42,6 +43,7 @@ class GuiWindow {
     int selected_device_type_ = 0;
     int preview_eye_selection_ = 0;
     std::string status_message_{"Ready"};
+    float sidebar_w_{360.0f};  // resizable via splitter drag
 
     // Frame preview textures (OpenGL texture IDs)
     uint32_t preview_textures_[2] = {0, 0};

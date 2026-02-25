@@ -24,11 +24,29 @@ enum class ComponentType {
     VEC2      // 2D vectors: thumbsticks, trackpads (-1.0 to 1.0)
 };
 
+// Which axis a FLOAT component represents in a linked VEC2 component
+enum class Vec2Axis {
+    NONE,  // This component is not a linked axis
+    X,     // This component is the X axis of its linked VEC2
+    Y,     // This component is the Y axis of its linked VEC2
+};
+
 // Component definition for a device
 struct ComponentDef {
     const char* path;  // e.g., "/input/trigger/value"
     ComponentType type;
     const char* description;  // Human-readable description
+
+    // Optional: restrict this component to a specific user path (e.g. "/user/hand/left").
+    // nullptr means no restriction — the component is visible/active for any device path.
+    const char* hand_restriction = nullptr;
+
+    // Optional VEC2 linkage: for a FLOAT component that is the X or Y axis of a VEC2
+    // component, set linked_vec2_path to the VEC2's path and linked_axis to X or Y.
+    // The simulator will keep the two in sync automatically.  VEC2 components that have
+    // FLOAT children linked to them are hidden from the UI (edit via their sub-axes).
+    const char* linked_vec2_path = nullptr;
+    Vec2Axis linked_axis = Vec2Axis::NONE;
 };
 
 // Device definition (HMD, controller, tracker, etc.)

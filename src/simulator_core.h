@@ -80,6 +80,11 @@ class SimulatorCore {
     std::tuple<DeviceInputState*, int32_t, ComponentType> ValidateDeviceAndComponent(const char* user_path,
                                                                                      const char* component_path);
 
+    // Sync helpers — called after setting a value to keep linked VEC2/FLOAT pairs consistent.
+    // Both are called WITHOUT holding state_mutex_ (they re-acquire it internally).
+    void SyncLinkedVec2FromFloat(const char* user_path, const char* component_path);
+    void SyncLinkedFloatsFromVec2(const char* user_path, const char* component_path);
+
     // Member variables
     const DeviceProfile* profile_;
     DeviceState state_;

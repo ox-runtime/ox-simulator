@@ -237,10 +237,83 @@ void SimulatorCore::SetInputStateBoolean(const char* user_path, const char* comp
 
 void SimulatorCore::SetInputStateFloat(const char* user_path, const char* component_path, float value) {
     SetInputState<ComponentType::FLOAT, float>(user_path, component_path, value);
+    SyncLinkedVec2FromFloat(user_path, component_path);
 }
 
 void SimulatorCore::SetInputStateVec2(const char* user_path, const char* component_path, const OxVector2f& value) {
     SetInputState<ComponentType::VEC2, OxVector2f>(user_path, component_path, value);
+    SyncLinkedFloatsFromVec2(user_path, component_path);
 }
 
+// ---------------------------------------------------------------------------
+// Linked-component sync helpers
+// ---------------------------------------------------------------------------
+
+// After a FLOAT axis component is set, propagate the new value into its parent
+// VEC2 component (if one is declared via linked_vec2_path / linked_axis).
+void SimulatorCore::SyncLinkedVec2FromFloat(const char* user_path, const char* component_path) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    const DeviceDef* dev_def = FindDeviceDefByUserPath(user_path);
+    if (!dev_def) return;
+
+    // Find source component definition
+    const ComponentDef* src_def = nullptr;
+    for (const auto& c : dev_def->components) {
+        if (std::strcmp(c.path, component_path) == 0) {
+            src_def = &c;
+            break;
+        }
+    }
+    if (!src_def || !src_def->linked_vec2_path || src_def->linked_axis == Vec2Axis::NONE) return;
+    if (src_def->type != ComponentType::FLOAT) return;
+
+    // Find device input state
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    if (device_index < 0) return;
+    DeviceInputState& inputs = state_.device_inputs[device_index];
+
+    // Get updated float value
+    auto [float_idx, float_type] = FindComponentInfo(dev_def, component_path);
+    if (float_idx == -1 || float_type != ComponentType::FLOAT) return;
+    float axis_val = std::get<float>(inputs.values[float_idx]);
+
+    // Find the VEC2 component and patch the appropriate axis
+    auto [vec2_idx, vec2_type] = FindComponentInfo(dev_def, src_def->linked_vec2_path);
+    if (vec2_idx == -1 || vec2_type != ComponentType::VEC2) return;
+    OxVector2f& vec2_val = std::get<OxVector2f>(inputs.values[vec2_idx]);
+    if (src_def->linked_axis == Vec2Axis::X)
+        vec2_val.x = axis_val;
+    else
+        vec2_val.y = axis_val;
+}
+
+// After a VEC2 component is set, propagate x / y into the FLOAT axis components
+// that declare themselves as linked to this VEC2.
+void SimulatorCore::SyncLinkedFloatsFromVec2(const char* user_path, const char* component_path) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    const DeviceDef* dev_def = FindDeviceDefByUserPath(user_path);
+    if (!dev_def) return;
+
+    int device_index = FindDeviceIndexByUserPath(user_path);
+    if (device_index < 0) return;
+    DeviceInputState& inputs = state_.device_inputs[device_index];
+
+    // Get the new VEC2 value
+    auto [vec2_idx, vec2_type] = FindComponentInfo(dev_def, component_path);
+    if (vec2_idx == -1 || vec2_type != ComponentType::VEC2) return;
+    const OxVector2f vec2_val = std::get<OxVector2f>(inputs.values[vec2_idx]);
+
+    // Update every FLOAT component that links to this VEC2
+    int32_t idx = 0;
+    for (const auto& c : dev_def->components) {
+        if (c.type == ComponentType::FLOAT && c.linked_vec2_path != nullptr &&
+            std::strcmp(c.linked_vec2_path, component_path) == 0 && c.linked_axis != Vec2Axis::NONE) {
+            float new_val = (c.linked_axis == Vec2Axis::X) ? vec2_val.x : vec2_val.y;
+            inputs.values[idx] = new_val;
+        }
+        idx++;
+    }
+}
 }  // namespace ox_sim
