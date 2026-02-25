@@ -153,7 +153,7 @@ void GuiWindow::RenderFrame() {
     const float preview_padding = 5.0f;
     ImGui::SetCursorPos(ImVec2(preview_padding, top_toolbar_h));
     ImGui::BeginChild("PreviewArea", ImVec2(preview_w - preview_padding, main_area_h), false,
-                      ImGuiWindowFlags_NoScrollbar);
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     {
         RenderFramePreview();
     }
@@ -200,17 +200,21 @@ void GuiWindow::RenderFramePreview() {
     UpdateFrameTextures();
 
     const ImVec2 region = ImGui::GetContentRegionAvail();
-    const float toolbar_h = 30.0f;
-    const float content_h = region.y - toolbar_h;
+    const float toolbar_h = 38.0f;
+    const float content_h = region.y - toolbar_h - ImGui::GetStyle().ItemSpacing.y;
     const bool has_image = preview_textures_valid_ && preview_width_ > 0 && preview_height_ > 0;
 
     ImGui::BeginChild("PreviewToolbar", ImVec2(0, toolbar_h), false, ImGuiWindowFlags_NoScrollbar);
     {
+        const float right_padding = 8.0f;
         const float combo_w = 80.0f;
         const float label_w = ImGui::CalcTextSize("View:").x + ImGui::GetStyle().ItemSpacing.x;
-        float cursor_x = ImGui::GetContentRegionAvail().x - combo_w - label_w;
+        const ImVec2 avail = ImGui::GetContentRegionAvail();
+        float cursor_x = avail.x - combo_w - label_w - right_padding;
         if (cursor_x < 0.0f) cursor_x = 0.0f;
-        ImGui::SetCursorPosX(cursor_x);
+        float center_y = (avail.y - ImGui::GetFrameHeight()) * 0.5f;
+        if (center_y < 0.0f) center_y = 0.0f;
+        ImGui::SetCursorPos(ImVec2(cursor_x, center_y));
         ImGui::AlignTextToFramePadding();
         ImGui::Text("View:");
         ImGui::SameLine();
@@ -350,19 +354,19 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     ImGui::Spacing();
     ImGui::Separator();
 
-    ImGui::TextColored(tc.warning, "Pose");
-    ImGui::Spacing();
-
+    ImGui::AlignTextToFramePadding();
     ImGui::Text("Position:");
+    ImGui::SameLine();
     float pos[3] = {pose.position.x, pose.position.y, pose.position.z};
     ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::DragFloat3("##Position", pos, 0.01f, -10.0f, 10.0f, "%.2f")) {
+    if (ImGui::DragFloat3("##Position", pos, 0.01f, -10.0f, 10.0f, "%.4f")) {
         pose.position = {pos[0], pos[1], pos[2]};
         simulator_->SetDevicePose(device.user_path, pose, is_active);
     }
 
-    ImGui::Spacing();
-    ImGui::Text("Rotation (Euler XYZ):");
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Rotation:");
+    ImGui::SameLine();
 
     float x = pose.orientation.x, y = pose.orientation.y;
     float z = pose.orientation.z, w = pose.orientation.w;
@@ -380,7 +384,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
 
     float euler[3] = {roll * 57.2958f, pitch * 57.2958f, yaw * 57.2958f};
     ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::DragFloat3("##Orientation", euler, 1.0f, -180.0f, 180.0f, "%.1f\xc2\xb0")) {
+    if (ImGui::DragFloat3("##Orientation", euler, 1.0f, -180.0f, 180.0f, "%.2f\xc2\xb0")) {
         float cy = std::cos(euler[2] * 0.0174533f * 0.5f);
         float sy = std::sin(euler[2] * 0.0174533f * 0.5f);
         float cp = std::cos(euler[1] * 0.0174533f * 0.5f);
@@ -438,7 +442,9 @@ void GuiWindow::RenderComponentControl(const DeviceDef& device, const ComponentD
         case ComponentType::FLOAT: {
             float value = 0.0f;
             simulator_->GetInputStateFloat(device.user_path, component.path, &value);
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("%s:", component.description);
+            ImGui::SameLine();
             ImGui::SetNextItemWidth(-1);
             if (ImGui::SliderFloat("##value", &value, 0.0f, 1.0f, "%.2f")) {
                 simulator_->SetInputStateFloat(device.user_path, component.path, value);
@@ -448,7 +454,9 @@ void GuiWindow::RenderComponentControl(const DeviceDef& device, const ComponentD
         case ComponentType::VEC2: {
             OxVector2f value = {0.0f, 0.0f};
             simulator_->GetInputStateVec2(device.user_path, component.path, &value);
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("%s:", component.description);
+            ImGui::SameLine();
             float vec2[2] = {value.x, value.y};
             ImGui::SetNextItemWidth(-1);
             if (ImGui::SliderFloat2("##vec2", vec2, -1.0f, 1.0f, "%.2f")) {

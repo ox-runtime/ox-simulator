@@ -10,10 +10,10 @@ namespace ox_sim {
 // ===== Oculus Touch Controller Components =====
 static const std::vector<ComponentDef> OCULUS_TOUCH_COMPONENTS = {
     // Trigger
-    {"/input/trigger/value", ComponentType::FLOAT, "Trigger analog value"},
-    {"/input/trigger/touch", ComponentType::BOOLEAN, "Trigger touch sensor"},
+    {"/input/trigger/value", ComponentType::FLOAT, "Trigger"},
+    {"/input/trigger/touch", ComponentType::BOOLEAN, "Trigger touch"},
     // Grip
-    {"/input/squeeze/value", ComponentType::FLOAT, "Grip/squeeze analog value"},
+    {"/input/squeeze/value", ComponentType::FLOAT, "Grip/squeeze"},
     // Thumbstick
     {"/input/thumbstick", ComponentType::VEC2, "Thumbstick 2D position"},
     {"/input/thumbstick/x", ComponentType::FLOAT, "Thumbstick X axis"},
@@ -21,14 +21,14 @@ static const std::vector<ComponentDef> OCULUS_TOUCH_COMPONENTS = {
     {"/input/thumbstick/click", ComponentType::BOOLEAN, "Thumbstick click"},
     {"/input/thumbstick/touch", ComponentType::BOOLEAN, "Thumbstick touch"},
     // Buttons - A/X on right, B/Y on left (using generic a/b names)
-    {"/input/x/click", ComponentType::BOOLEAN, "X button click (left controller)"},
-    {"/input/x/touch", ComponentType::BOOLEAN, "X button touch"},
-    {"/input/y/click", ComponentType::BOOLEAN, "Y button click (left controller)"},
-    {"/input/y/touch", ComponentType::BOOLEAN, "Y button touch"},
-    {"/input/a/click", ComponentType::BOOLEAN, "A button click (right controller)"},
-    {"/input/a/touch", ComponentType::BOOLEAN, "A button touch"},
-    {"/input/b/click", ComponentType::BOOLEAN, "B button click (right controller)"},
-    {"/input/b/touch", ComponentType::BOOLEAN, "B button touch"},
+    {"/input/x/click", ComponentType::BOOLEAN, "X button click"}, // left controller
+    {"/input/x/touch", ComponentType::BOOLEAN, "X button touch"}, // left controller
+    {"/input/y/click", ComponentType::BOOLEAN, "Y button click"}, // left controller
+    {"/input/y/touch", ComponentType::BOOLEAN, "Y button touch"}, // left controller
+    {"/input/a/click", ComponentType::BOOLEAN, "A button click"}, // right controller
+    {"/input/a/touch", ComponentType::BOOLEAN, "A button touch"}, // right controller
+    {"/input/b/click", ComponentType::BOOLEAN, "B button click"}, // right controller
+    {"/input/b/touch", ComponentType::BOOLEAN, "B button touch"}, // right controller
     // Menu button
     {"/input/menu/click", ComponentType::BOOLEAN, "Menu button click"},
 };
@@ -36,7 +36,7 @@ static const std::vector<ComponentDef> OCULUS_TOUCH_COMPONENTS = {
 // ===== Vive Controller Components =====
 static const std::vector<ComponentDef> VIVE_CONTROLLER_COMPONENTS = {
     // Trigger
-    {"/input/trigger/value", ComponentType::FLOAT, "Trigger analog value"},
+    {"/input/trigger/value", ComponentType::FLOAT, "Trigger"},
     {"/input/trigger/click", ComponentType::BOOLEAN, "Trigger click"},
     // Grip
     {"/input/squeeze/click", ComponentType::BOOLEAN, "Grip button click"},
@@ -53,11 +53,11 @@ static const std::vector<ComponentDef> VIVE_CONTROLLER_COMPONENTS = {
 // ===== Valve Index Controller Components =====
 static const std::vector<ComponentDef> INDEX_CONTROLLER_COMPONENTS = {
     // Trigger
-    {"/input/trigger/value", ComponentType::FLOAT, "Trigger analog value"},
+    {"/input/trigger/value", ComponentType::FLOAT, "Trigger"},
     {"/input/trigger/click", ComponentType::BOOLEAN, "Trigger click"},
     {"/input/trigger/touch", ComponentType::BOOLEAN, "Trigger touch"},
     // Grip (force sensor)
-    {"/input/squeeze/value", ComponentType::FLOAT, "Grip force analog value"},
+    {"/input/squeeze/value", ComponentType::FLOAT, "Grip force"},
     {"/input/squeeze/force", ComponentType::FLOAT, "Grip force (alias)"},
     // Thumbstick
     {"/input/thumbstick", ComponentType::VEC2, "Thumbstick 2D position"},
