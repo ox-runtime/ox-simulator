@@ -1,7 +1,5 @@
 #include "gui_window.h"
 
-#define NOMINMAX
-
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -54,6 +52,12 @@ bool GuiWindow::Start(SimulatorCore* simulator, const DeviceProfile** device_pro
 
     std::cout << "Initializing GUI window..." << std::endl;
     vog::WindowConfig cfg{"ox simulator", 1280, 720};
+
+    // No window padding
+    vog::Theme theme;
+    theme.vars.window_padding = ImVec2(0, 0);
+    cfg.theme = theme;
+
     return window_.Start(cfg, [this]() { RenderFrame(); });
 }
 
@@ -65,26 +69,17 @@ void GuiWindow::Stop() { window_.Stop(); }
 // ---------------------------------------------------------------------------
 
 void GuiWindow::RenderFrame() {
-    const vog::ThemeColors& tc = vog::GetThemeColors();
+    const vog::ThemeColors& tc = vog::Window::GetTheme().colors;
 
     ImGuiIO& io = ImGui::GetIO();
-    ImVec2 window_size = io.DisplaySize;
 
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(window_size);
-
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
-                                    ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-    ImGui::Begin("MainWindow", nullptr, window_flags);
     ImVec2 content_size = ImGui::GetContentRegionAvail();
     const ImGuiStyle& style = ImGui::GetStyle();
 
     // ========== TOP TOOLBAR STRIP ==========
     const float top_toolbar_h = 48.0f;
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.surface);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.surface.value());
     ImGui::BeginChild("TopToolbar", ImVec2(0, top_toolbar_h), false, ImGuiWindowFlags_NoScrollbar);
     {
         const float btn_runtime_w = 190.0f;
@@ -183,8 +178,8 @@ void GuiWindow::RenderFrame() {
         ImVec2 tl = ImGui::GetItemRectMin();
         ImVec2 br = ImGui::GetItemRectMax();
         float line_x = std::round((tl.x + br.x) * 0.5f);
-        ImU32 col = ImGui::IsItemHovered() || ImGui::IsItemActive() ? ImGui::GetColorU32(tc.accent)
-                                                                    : ImGui::GetColorU32(tc.surface);
+        ImU32 col = ImGui::IsItemHovered() || ImGui::IsItemActive() ? ImGui::GetColorU32(tc.accent.value())
+                                                                    : ImGui::GetColorU32(tc.surface.value());
         dl->AddLine(ImVec2(line_x, tl.y), ImVec2(line_x, br.y), col, 3.0f);
     }
 
@@ -221,13 +216,11 @@ void GuiWindow::RenderFrame() {
         ImGui::Unindent(5.0f);
     }
     ImGui::EndChild();
-
-    ImGui::End();
 }
 
 void GuiWindow::RenderFramePreview() {
     using vog::widgets::Combo;
-    const vog::ThemeColors& tc = vog::GetThemeColors();
+    const vog::ThemeColors& tc = vog::Window::GetTheme().colors;
 
     UpdateFrameTextures();
 
@@ -280,14 +273,14 @@ void GuiWindow::RenderFramePreview() {
             ImGui::SetCursorPos(ImVec2(left_x, y_off));
             if (preview_textures_[0]) {
                 ImGui::Image((ImTextureID)(intptr_t)preview_textures_[0], ImVec2(w_each, h_each), ImVec2(0, 1),
-                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border);
+                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border.value());
             } else {
                 ImGui::Dummy(ImVec2(w_each, h_each));
             }
             ImGui::SetCursorPos(ImVec2(right_x, y_off));
             if (preview_textures_[1]) {
                 ImGui::Image((ImTextureID)(intptr_t)preview_textures_[1], ImVec2(w_each, h_each), ImVec2(0, 1),
-                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border);
+                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border.value());
             } else {
                 ImGui::Dummy(ImVec2(w_each, h_each));
             }
@@ -306,7 +299,7 @@ void GuiWindow::RenderFramePreview() {
                 const float y_off = (avail.y - img_h) * 0.5f;
                 ImGui::SetCursorPos(ImVec2(x_off, y_off));
                 ImGui::Image((ImTextureID)(intptr_t)preview_textures_[eye], ImVec2(img_w, img_h), ImVec2(0, 1),
-                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border);
+                             ImVec2(1, 0), ImVec4(1, 1, 1, 1), tc.border.value());
             } else {
                 ImVec2 ts = ImGui::CalcTextSize(no_msg);
                 ImGui::SetCursorPos(ImVec2((avail.x - ts.x) * 0.5f, (avail.y - ts.y) * 0.5f));
@@ -351,7 +344,7 @@ void GuiWindow::UpdateFrameTextures() {
 
 void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, float panel_width) {
     using vog::widgets::ShowItemTooltip;
-    const vog::ThemeColors& tc = vog::GetThemeColors();
+    const vog::ThemeColors& tc = vog::Window::GetTheme().colors;
     ImGui::PushID(device_index);
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -367,9 +360,9 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     const float content_start_x = ImGui::GetCursorPosX();
 
     std::string device_label = std::string(device.role);
-    ImGui::TextColored(tc.accent, "%s", device_label.c_str());
+    ImGui::TextColored(tc.accent.value(), "%s", device_label.c_str());
     ImGui::SameLine();
-    ImGui::TextColored(tc.text_muted, "(%s)", device.user_path);
+    ImGui::TextColored(tc.text_muted.value(), "(%s)", device.user_path);
     ImGui::Separator();
 
     bool is_active = false;
@@ -386,7 +379,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
         }
         ShowItemTooltip("Enable/disable device tracking");
     } else {
-        ImGui::TextColored(tc.positive, "Active: Always On");
+        ImGui::TextColored(tc.positive.value(), "Active: Always On");
         ShowItemTooltip("This device is always active");
     }
 
@@ -453,7 +446,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
     if (!visible_comps.empty()) {
         ImGui::Spacing();
         ImGui::Separator();
-        ImGui::TextColored(tc.warning, "Input Components");
+        ImGui::TextColored(tc.warning.value(), "Input Components");
         ImGui::Spacing();
         for (const ComponentDef* comp : visible_comps) {
             RenderComponentControl(device, *comp, device_index, label_col_w, content_start_x);
@@ -465,7 +458,7 @@ void GuiWindow::RenderDevicePanel(const DeviceDef& device, int device_index, flo
 
     const ImVec2 group_br = ImGui::GetItemRectMax();
     const ImVec2 panel_br = ImVec2(panel_tl.x + panel_width, group_br.y + pad);
-    draw_list->AddRect(panel_tl, panel_br, ImGui::ColorConvertFloat4ToU32(tc.border), rounding);
+    draw_list->AddRect(panel_tl, panel_br, ImGui::ColorConvertFloat4ToU32(tc.border.value()), rounding);
 
     ImGui::SetCursorScreenPos(ImVec2(panel_tl.x, panel_br.y));
     ImGui::Dummy(ImVec2(panel_width, 0.0f));
