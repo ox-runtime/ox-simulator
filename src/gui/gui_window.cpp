@@ -186,7 +186,7 @@ void GuiWindow::RenderFrame() {
     // ---- Sidebar ----
     ImGui::SetCursorPos(ImVec2(preview_w + splitter_w, top_toolbar_h));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.panel0.value());
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.panel1.value());
     ImGui::BeginChild("Sidebar", ImVec2(sidebar_w_, main_area_h), false);
     {
         if (*device_profile_ptr_) {
