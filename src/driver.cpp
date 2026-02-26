@@ -228,6 +228,10 @@ static uint32_t simulator_get_interaction_profiles(const char** out_profiles, ui
     return 1;
 }
 
+static void simulator_on_session_state_changed(OxSessionState new_state) {
+    g_frame_data.session_state.store(static_cast<uint32_t>(new_state), std::memory_order_relaxed);
+}
+
 static void simulator_submit_frame_pixels(uint32_t eye_index, uint32_t width, uint32_t height, uint32_t format,
                                           const void* pixel_data, uint32_t data_size) {
     if (eye_index >= 2 || width == 0 || height == 0 || !pixel_data || data_size == 0) {
@@ -250,6 +254,11 @@ static void simulator_submit_frame_pixels(uint32_t eye_index, uint32_t width, ui
         // Store the shared memory pointer
         g_frame_data.pixel_data[eye_index] = pixel_data;
         g_frame_data.data_size[eye_index] = data_size;
+
+        // App FPS computation
+        if (eye_index == 0) {
+            g_frame_data.UpdateFps();
+        }
 
         // Mark that new frame is available
         g_frame_data.has_new_frame.store(true, std::memory_order_release);
@@ -275,6 +284,7 @@ extern "C" OX_DRIVER_EXPORT int ox_driver_register(OxDriverCallbacks* callbacks)
     callbacks->get_input_state_float = simulator_get_input_state_float;
     callbacks->get_input_state_vector2f = simulator_get_input_state_vector2f;
     callbacks->get_interaction_profiles = simulator_get_interaction_profiles;
+    callbacks->on_session_state_changed = simulator_on_session_state_changed;
     callbacks->submit_frame_pixels = simulator_submit_frame_pixels;
 
     return 1;

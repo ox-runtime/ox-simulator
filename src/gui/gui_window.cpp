@@ -79,7 +79,7 @@ void GuiWindow::RenderFrame() {
     // ========== TOP TOOLBAR STRIP ==========
     const float top_toolbar_h = 48.0f;
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.surface.value());
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.bg.value());
     ImGui::BeginChild("TopToolbar", ImVec2(0, top_toolbar_h), false, ImGuiWindowFlags_NoScrollbar);
     {
         const float btn_runtime_w = 190.0f;
@@ -179,13 +179,14 @@ void GuiWindow::RenderFrame() {
         ImVec2 br = ImGui::GetItemRectMax();
         float line_x = std::round((tl.x + br.x) * 0.5f);
         ImU32 col = ImGui::IsItemHovered() || ImGui::IsItemActive() ? ImGui::GetColorU32(tc.accent.value())
-                                                                    : ImGui::GetColorU32(tc.surface.value());
+                                                                    : ImGui::GetColorU32(tc.bg.value());
         dl->AddLine(ImVec2(line_x, tl.y), ImVec2(line_x, br.y), col, 3.0f);
     }
 
     // ---- Sidebar ----
     ImGui::SetCursorPos(ImVec2(preview_w + splitter_w, top_toolbar_h));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.panel0.value());
     ImGui::BeginChild("Sidebar", ImVec2(sidebar_w_, main_area_h), false);
     {
         if (*device_profile_ptr_) {
@@ -199,6 +200,7 @@ void GuiWindow::RenderFrame() {
         }
     }
     ImGui::EndChild();
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 
     // ---- Status bar ----
@@ -208,7 +210,10 @@ void GuiWindow::RenderFrame() {
         ImGui::Indent(5.0f);
         if (*device_profile_ptr_) {
             const DeviceProfile* p = *device_profile_ptr_;
-            ImGui::Text("Display: %dx%d @ %.0f Hz  |  %s", p->display_width, p->display_height, p->refresh_rate,
+            FrameData* fd = GetFrameData();
+            const bool session_ok = fd && fd->IsSessionActive();
+            const uint32_t app_fps = session_ok ? fd->app_fps.load(std::memory_order_relaxed) : 0u;
+            ImGui::Text("Display: %dx%d @ %u fps  |  %s", p->display_width, p->display_height, app_fps,
                         status_message_.c_str());
         } else {
             ImGui::Text("%s", status_message_.c_str());
@@ -229,16 +234,29 @@ void GuiWindow::RenderFramePreview() {
     const float content_h = region.y - toolbar_h - ImGui::GetStyle().ItemSpacing.y;
     const bool has_image = preview_textures_valid_ && preview_width_ > 0 && preview_height_ > 0;
 
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.panel2.value());
     ImGui::BeginChild("PreviewToolbar", ImVec2(0, toolbar_h), false, ImGuiWindowFlags_NoScrollbar);
     {
         const float right_padding = 8.0f;
         const float combo_w = 80.0f;
         const float label_w = ImGui::CalcTextSize("View:").x + ImGui::GetStyle().ItemSpacing.x;
         const ImVec2 avail = ImGui::GetContentRegionAvail();
-        float cursor_x = avail.x - combo_w - label_w - right_padding;
-        if (cursor_x < 0.0f) cursor_x = 0.0f;
         float center_y = (avail.y - ImGui::GetFrameHeight()) * 0.5f;
         if (center_y < 0.0f) center_y = 0.0f;
+
+        // Left: session active indicator with filled circle
+        ImGui::SetCursorPos(ImVec2(8.0f, center_y));
+        ImGui::AlignTextToFramePadding();
+        const bool session_active = GetFrameData() && GetFrameData()->IsSessionActive();
+        if (session_active) {
+            ImGui::TextColored(tc.positive.value(), ICON_FA_CIRCLE "  Session: Active");
+        } else {
+            ImGui::TextColored(tc.text_muted.value(), ICON_FA_CIRCLE "  Session: Inactive");
+        }
+
+        // Right: view select combo
+        float cursor_x = avail.x - combo_w - label_w - right_padding;
+        if (cursor_x < 0.0f) cursor_x = 0.0f;
         ImGui::SetCursorPos(ImVec2(cursor_x, center_y));
         ImGui::AlignTextToFramePadding();
         ImGui::Text("View:");
@@ -248,7 +266,9 @@ void GuiWindow::RenderFramePreview() {
         Combo("##EyeSelect", &preview_eye_selection_, eye_names, 3);
     }
     ImGui::EndChild();
+    ImGui::PopStyleColor();
 
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, tc.panel1.value());
     ImGui::BeginChild("PreviewContent", ImVec2(0, content_h), false,
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     {
@@ -308,6 +328,7 @@ void GuiWindow::RenderFramePreview() {
         }
     }
     ImGui::EndChild();
+    ImGui::PopStyleColor();
 }
 
 void GuiWindow::UpdateFrameTextures() {
