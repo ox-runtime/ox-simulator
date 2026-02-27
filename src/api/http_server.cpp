@@ -39,10 +39,15 @@ static const char* SessionStateName(OxSessionState s) {
     }
 }
 
-// Encode RGBA pixel data as PNG into a byte vector
+// Encode RGBA pixel data as PNG into a byte vector.
+// The raw pixel data is stored bottom-row-first (OpenGL convention), so we flip
+// vertically by starting at the last row and using a negative stride
 static std::vector<uint8_t> EncodeRGBAToPng(const void* rgba_data, uint32_t width, uint32_t height) {
     std::vector<uint8_t> out;
     out.reserve(width * height);  // rough reserve
+    const int stride = static_cast<int>(width * 4);
+    // Point to the first byte of the last row, then walk backwards row by row.
+    const uint8_t* last_row = static_cast<const uint8_t*>(rgba_data) + (height - 1) * stride;
     stbi_write_png_to_func(
         [](void* context, void* data, int size) {
             auto* buf = static_cast<std::vector<uint8_t>*>(context);
@@ -51,8 +56,8 @@ static std::vector<uint8_t> EncodeRGBAToPng(const void* rgba_data, uint32_t widt
         },
         &out, static_cast<int>(width), static_cast<int>(height),
         4,  // 4 channels: RGBA
-        rgba_data,
-        static_cast<int>(width * 4)  // stride in bytes
+        last_row,
+        -stride  // negative stride flips the image vertically
     );
     return out;
 }
