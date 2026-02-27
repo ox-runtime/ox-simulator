@@ -10,8 +10,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "config.hpp"
 #include "device_profiles.h"
 #include "frame_data.h"
+#include "http_server.h"
 #include "imgui_impl_opengl3.h"
 #include "utils.hpp"
 #include "vog.h"
@@ -24,7 +26,8 @@ namespace ox_sim {
 GuiWindow::GuiWindow() = default;
 GuiWindow::~GuiWindow() { Stop(); }
 
-bool GuiWindow::Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, bool* api_enabled) {
+bool GuiWindow::Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, bool* api_enabled,
+                      HttpServer* http_server, int api_port) {
     if (!simulator) {
         std::cerr << "GuiWindow::Start: Simulator is null" << std::endl;
         return false;
@@ -45,6 +48,8 @@ bool GuiWindow::Start(SimulatorCore* simulator, const DeviceProfile** device_pro
     simulator_ = simulator;
     device_profile_ptr_ = device_profile_ptr;
     api_enabled_ = api_enabled;
+    http_server_ = http_server;
+    api_port_ = api_port;
 
     if (*device_profile_ptr_) {
         selected_device_type_ = static_cast<int>((*device_profile_ptr_)->type);
@@ -116,9 +121,30 @@ void GuiWindow::RenderFrame() {
         bool api_on = *api_enabled_;
         if (vog::widgets::ToggleButton("API Server:", &api_on, false)) {
             *api_enabled_ = api_on;
-            status_message_ = api_on ? "API Server enabled (port 8765)" : "API Server disabled";
+            g_config.api = api_on;
+            SaveConfig(GetConfigPath());
+            if (api_on) {
+                if (http_server_ && !http_server_->IsRunning()) {
+                    http_server_->Start(simulator_, device_profile_ptr_, api_port_);
+                }
+                status_message_ = std::string("API Server enabled (port ") + std::to_string(api_port_) + ")";
+            } else {
+                if (http_server_ && http_server_->IsRunning()) {
+                    http_server_->Stop();
+                }
+                status_message_ = "API Server disabled";
+            }
         }
         vog::widgets::ShowItemTooltip("Toggle HTTP API server on port 8765");
+
+        ImGui::SameLine();
+
+        if (ImGui::Button(ICON_FA_GLOBE "##copy_api_url")) {
+            std::string api_url = std::string("http://localhost:") + std::to_string(api_port_);
+            glfwSetClipboardString(window_.GetNativeWindow(), api_url.c_str());
+            status_message_ = "Copied API URL to clipboard";
+        }
+        vog::widgets::ShowItemTooltip("Copy the API URL to clipboard");
 
         ImGui::SameLine(0, spacing);
 

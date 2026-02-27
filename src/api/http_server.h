@@ -38,6 +38,7 @@ class HttpServer {
     std::thread server_thread_;
     std::atomic<bool> running_;
     std::atomic<bool> should_stop_;
+    std::unique_ptr<crow::SimpleApp> app_;
 };
 
 }  // namespace ox_sim

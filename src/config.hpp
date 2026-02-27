@@ -101,3 +101,23 @@ inline std::filesystem::path get_module_path() {
 
 // Get the config file path (same directory as driver)
 inline std::string GetConfigPath() { return (get_module_path() / "config.json").string(); }
+
+// Save the current g_config back to the config file
+inline bool SaveConfig(const std::string& config_path) {
+    std::ofstream file(config_path);
+    if (!file.is_open()) {
+        std::cerr << "SaveConfig: Failed to open config file for writing: " << config_path << std::endl;
+        return false;
+    }
+
+    crow::json::wvalue json_config = {{"device", g_config.device},
+                                      {"headless", g_config.headless},
+                                      {"api", g_config.api},
+                                      {"api_port", g_config.api_port}};
+
+    file << json_config.dump(2);  // Pretty print with 2-space indentation
+    file.close();
+
+    std::cout << "SaveConfig: Saved config to " << config_path << std::endl;
+    return true;
+}

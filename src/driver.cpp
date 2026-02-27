@@ -74,7 +74,7 @@ static int simulator_initialize(void) {
     }
 
     if (!g_config.headless) {
-        if (!g_gui_window.Start(&g_simulator, &g_device_profile, &g_api_enabled)) {
+        if (!g_gui_window.Start(&g_simulator, &g_device_profile, &g_api_enabled, &g_http_server, g_config.api_port)) {
             std::cerr << "Failed to start GUI window" << std::endl;
             g_http_server.Stop();
             return 0;

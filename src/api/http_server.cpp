@@ -105,11 +105,9 @@ bool HttpServer::Start(SimulatorCore* simulator, const DeviceProfile** device_pr
 void HttpServer::Stop() {
     if (running_.load()) {
         should_stop_.store(true);
-
-        // NOTE: CROW doesn't have a clean shutdown mechanism in multithreaded mode
-        // The server will continue running until the process exits
-        // This is acceptable for a driver that runs for the lifetime of ox-service
-
+        if (app_) {
+            app_->stop();
+        }
         running_.store(false);
     }
 }
@@ -130,7 +128,8 @@ void HttpServer::ServerThread() {
 
     running_.store(true);
 
-    crow::SimpleApp app;
+    app_ = std::make_unique<crow::SimpleApp>();
+    crow::SimpleApp& app = *app_;
 
     CROW_ROUTE(app, "/v1/devices/<path>").methods("GET"_method)([this](const std::string& user_path) {
         // prepend '/' to user_path since it'll be missing
@@ -463,6 +462,7 @@ void HttpServer::ServerThread() {
         std::cerr << "Unknown exception starting server" << std::endl;
     }
 
+    app_.reset();
     running_.store(false);
     std::cout << "HTTP Server stopped" << std::endl;
     std::cout.flush();

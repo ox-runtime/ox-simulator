@@ -9,6 +9,8 @@
 
 namespace ox_sim {
 
+class HttpServer;  // forward declaration
+
 class GuiWindow {
    public:
     GuiWindow();
@@ -16,8 +18,10 @@ class GuiWindow {
 
     // Start the GUI window. device_profile_ptr points at the current device profile
     // pointer so that device switching is reflected immediately; api_enabled is a
-    // shared flag for the HTTP API server toggle.
-    bool Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, bool* api_enabled);
+    // shared flag for the HTTP API server toggle. http_server and api_port are used
+    // to start/stop the server when the toggle changes.
+    bool Start(SimulatorCore* simulator, const DeviceProfile** device_profile_ptr, bool* api_enabled,
+               HttpServer* http_server, int api_port);
 
     // Signal the window to close and wait for it to finish.
     void Stop();
@@ -51,6 +55,8 @@ class GuiWindow {
     SimulatorCore* simulator_ = nullptr;
     const DeviceProfile** device_profile_ptr_ = nullptr;
     bool* api_enabled_ = nullptr;
+    HttpServer* http_server_ = nullptr;
+    int api_port_ = 8765;
 
     // UI state
     int selected_device_type_ = 0;
