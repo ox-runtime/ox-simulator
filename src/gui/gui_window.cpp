@@ -584,16 +584,16 @@ void GuiWindow::RenderRotationControl(const DeviceDef& device, int device_index,
         ec.quat = pose.orientation;
     }
 
-    // rot[0] = pitch, rot[1] = yaw, rot[2] = roll
-    float rot[3] = {ec.euler.y, ec.euler.z, ec.euler.x};
+    // OpenXR right-handed Y-up: euler.x=pitch, euler.y=yaw, euler.z=roll — no shuffling needed.
+    float rot[3] = {ec.euler.x, ec.euler.y, ec.euler.z};
     const float pad = 8.0f;
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - pad);
     if (ImGui::DragFloat3("##Rotation", rot, 1.0f, -FLT_MAX, FLT_MAX, "%.2f°")) {
         // Apply each axis delta as an incremental world-space rotation so
         // the three axes stay independent (no gimbal-lock singularity).
-        float dp = DegToRad(rot[0] - ec.euler.y);  // pitch delta, radians
-        float dy = DegToRad(rot[1] - ec.euler.z);  // yaw delta
-        float dr = DegToRad(rot[2] - ec.euler.x);  // roll delta
+        float dp = DegToRad(rot[0] - ec.euler.x);  // pitch delta (rot around X)
+        float dy = DegToRad(rot[1] - ec.euler.y);  // yaw delta   (rot around Y)
+        float dr = DegToRad(rot[2] - ec.euler.z);  // roll delta  (rot around Z)
 
         OxQuaternion q = pose.orientation;
         ApplyRotation(q, OxVector3f{1, 0, 0}, dp);
@@ -607,17 +607,19 @@ void GuiWindow::RenderRotationControl(const DeviceDef& device, int device_index,
     }
 }
 
-// Convert quaternion to Euler angles (in degrees), using the Tait-Bryan Yaw-Pitch-Roll convention (Y=X=Z=0 at
-// identity).
+// Convert quaternion to Euler angles (in degrees) using the OpenXR right-handed Y-up convention.
+// euler.x = pitch (rotation around X), euler.y = yaw (rotation around Y), euler.z = roll (rotation around Z).
 void GuiWindow::QuatToEuler(const OxQuaternion& q, OxVector3f& euler) {
-    float sinr_cosp = 2.0f * (q.w * q.x + q.y * q.z);
-    float cosr_cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-    float sinp = 2.0f * (q.w * q.y - q.z * q.x);
-    float siny_cosp = 2.0f * (q.w * q.z + q.x * q.y);
-    float cosy_cosp = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
-    euler.x = RadToDeg(std::atan2(sinr_cosp, cosr_cosp));                                         // roll
-    euler.y = (std::abs(sinp) >= 1.0f ? std::copysign(90.0f, sinp) : RadToDeg(std::asin(sinp)));  // pitch
-    euler.z = RadToDeg(std::atan2(siny_cosp, cosy_cosp));                                         // yaw
+    // OpenXR right-handed Y-up: pitch=rotate-X, yaw=rotate-Y, roll=rotate-Z
+    float sinp_cosy = 2.0f * (q.w * q.x + q.y * q.z);
+    float cosp_cosy = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
+    float siny = 2.0f * (q.w * q.y - q.z * q.x);
+    float sinr_cosy = 2.0f * (q.w * q.z + q.x * q.y);
+    float cosr_cosy = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
+    euler.x = RadToDeg(std::atan2(sinp_cosy, cosp_cosy));  // pitch (rot around X)
+    euler.y =
+        (std::abs(siny) >= 1.0f ? std::copysign(90.0f, siny) : RadToDeg(std::asin(siny)));  // yaw   (rot around Y)
+    euler.z = RadToDeg(std::atan2(sinr_cosy, cosr_cosy));                                   // roll  (rot around Z)
 }
 
 // Apply an incremental rotation (angle in radians) around the given axis to the input quaternion.
