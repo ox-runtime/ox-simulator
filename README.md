@@ -93,6 +93,15 @@ GET http://localhost:8765/v1/frames/0  # Left eye
 GET http://localhost:8765/v1/frames/1  # Right eye
 ```
 
+**Query Parameters:**
+- `size` (optional): Target width for the returned image in pixels. Height is automatically calculated to maintain aspect ratio. Must be greater than 0. If not specified, returns the original full-resolution image.
+
+**Examples:**
+```bash
+GET http://localhost:8765/v1/frames/0?size=128  # Left eye, scaled to 128px width
+GET http://localhost:8765/v1/frames/1?size=512  # Right eye, scaled to 512px width
+```
+
 **Response:** PNG image data (Content-Type: `image/png`)
 
 **Response codes:**
@@ -240,9 +249,9 @@ curl http://localhost:8765/v1/status
 curl -o left_eye.png http://localhost:8765/v1/frames/0
 ```
 
-**Download right eye texture:**
+**Download right eye texture (scaled to 256px width):**
 ```bash
-curl -o right_eye.png http://localhost:8765/v1/frames/1
+curl -o right_eye.png "http://localhost:8765/v1/frames/1?size=256"
 ```
 
 **Get current device profile:**
@@ -311,17 +320,17 @@ if response.status_code == 200:
     print(f"Session active: {status['session_active']}")
 
 # Download eye textures
-response = requests.get(f"{BASE_URL}/v1/frames/0")  # Left eye
+response = requests.get(f"{BASE_URL}/v1/frames/0")  # Left eye (full resolution)
 if response.status_code == 200:
     with open("left_eye.png", "wb") as f:
         f.write(response.content)
     print("Downloaded left eye texture")
 
-response = requests.get(f"{BASE_URL}/v1/frames/1")  # Right eye
+response = requests.get(f"{BASE_URL}/v1/frames/1?size=256")  # Right eye (scaled to 256px width)
 if response.status_code == 200:
     with open("right_eye.png", "wb") as f:
         f.write(response.content)
-    print("Downloaded right eye texture")
+    print("Downloaded right eye texture (scaled)")
 
 # Get current device profile
 response = requests.get(f"{BASE_URL}/v1/profile")

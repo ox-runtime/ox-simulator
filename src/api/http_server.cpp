@@ -13,6 +13,10 @@
 #include "frame_data.h"
 #include "stb_image_write.h"
 
+#define STB_IMAGE_RESIZE_STATIC
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize.h"
+
 namespace ox_sim {
 
 // Map OxSessionState enum to a human-readable string
@@ -339,7 +343,7 @@ void HttpServer::ServerThread() {
     });
 
     // Eye texture endpoints — return PNG images
-    auto eye_frame_handler = [](int eye_index) -> crow::response {
+    auto eye_frame_handler = [](const crow::request& req, int eye_index) -> crow::response {
         FrameData* fd = GetFrameData();
         if (!fd) {
             return crow::response(503, "Frame data unavailable");
@@ -351,7 +355,42 @@ void HttpServer::ServerThread() {
             return crow::response(404, "No frame available");
         }
 
-        std::vector<uint8_t> png = EncodeRGBAToPng(fd->pixel_data[eye_index], fd->width, fd->height);
+        uint32_t output_width = fd->width;
+        uint32_t output_height = fd->height;
+
+        // Check for optional "size" query parameter (target width)
+        if (auto size_param = req.url_params.get("size")) {
+            try {
+                int requested_width = std::stoi(size_param);
+                if (requested_width > 0) {
+                    float aspect_ratio = static_cast<float>(fd->width) / static_cast<float>(fd->height);
+                    output_width = static_cast<uint32_t>(requested_width);
+                    output_height = static_cast<uint32_t>(requested_width / aspect_ratio);
+                }
+            } catch (...) {
+                // Invalid size parameter, ignore and use original size
+            }
+        }
+
+        std::vector<uint8_t> png;
+        if (output_width == fd->width && output_height == fd->height) {
+            // No resizing needed
+            png = EncodeRGBAToPng(fd->pixel_data[eye_index], fd->width, fd->height);
+        } else {
+            // Resize the image
+            std::vector<uint8_t> resized_pixels(output_width * output_height * 4);
+            int resize_result = stbir_resize_uint8(static_cast<const uint8_t*>(fd->pixel_data[eye_index]), fd->width,
+                                                   fd->height, 0, resized_pixels.data(), output_width, output_height, 0,
+                                                   4  // RGBA channels
+            );
+
+            if (resize_result == 0) {
+                return crow::response(500, "Image resizing failed");
+            }
+
+            png = EncodeRGBAToPng(resized_pixels.data(), output_width, output_height);
+        }
+
         if (png.empty()) {
             return crow::response(500, "PNG encoding failed");
         }
@@ -363,9 +402,13 @@ void HttpServer::ServerThread() {
         return resp;
     };
 
-    CROW_ROUTE(app, "/v1/frames/0").methods("GET"_method)([&eye_frame_handler]() { return eye_frame_handler(0); });
+    CROW_ROUTE(app, "/v1/frames/0").methods("GET"_method)([&eye_frame_handler](const crow::request& req) {
+        return eye_frame_handler(req, 0);
+    });
 
-    CROW_ROUTE(app, "/v1/frames/1").methods("GET"_method)([&eye_frame_handler]() { return eye_frame_handler(1); });
+    CROW_ROUTE(app, "/v1/frames/1").methods("GET"_method)([&eye_frame_handler](const crow::request& req) {
+        return eye_frame_handler(req, 1);
+    });
 
     // Get current device profile
     CROW_ROUTE(app, "/v1/profile").methods("GET"_method)([this]() {
