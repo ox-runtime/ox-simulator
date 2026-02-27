@@ -45,13 +45,18 @@ static const char* SessionStateName(OxSessionState s) {
 
 // Encode RGBA pixel data as PNG into a byte vector.
 // The raw pixel data is stored bottom-row-first (OpenGL convention), so we flip
-// vertically by starting at the last row and using a negative stride
+// vertically by starting at the last row and using a negative stride.
+// Alpha is forced to 255 because OpenXR apps frequently leave alpha at 0
 static std::vector<uint8_t> EncodeRGBAToPng(const void* rgba_data, uint32_t width, uint32_t height) {
     std::vector<uint8_t> out;
     out.reserve(width * height);  // rough reserve
     const int stride = static_cast<int>(width * 4);
+    // Copy pixels and force alpha to fully opaque.
+    std::vector<uint8_t> opaque(static_cast<const uint8_t*>(rgba_data),
+                                static_cast<const uint8_t*>(rgba_data) + width * height * 4);
+    for (uint32_t i = 0; i < width * height; ++i) opaque[i * 4 + 3] = 255;
     // Point to the first byte of the last row, then walk backwards row by row.
-    const uint8_t* last_row = static_cast<const uint8_t*>(rgba_data) + (height - 1) * stride;
+    const uint8_t* last_row = opaque.data() + (height - 1) * stride;
     stbi_write_png_to_func(
         [](void* context, void* data, int size) {
             auto* buf = static_cast<std::vector<uint8_t>*>(context);
