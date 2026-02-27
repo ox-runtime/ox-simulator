@@ -66,6 +66,40 @@ The simulator starts automatically when the ox service is launched.
 
 The simulator provides a REST API for controlling virtual devices:
 
+#### Get Session Status
+```bash
+GET http://localhost:8765/v1/status
+```
+
+**Response:**
+```json
+{
+  "session_state": "focused",
+  "session_state_id": 5,
+  "session_active": true,
+  "fps": 72
+}
+```
+
+**Response fields:**
+- `session_state`: Human-readable session state (`unknown`, `idle`, `ready`, `synchronized`, `visible`, `focused`, `stopping`, `exiting`)
+- `session_state_id`: Numeric session state ID (0-7)
+- `session_active`: Boolean indicating if session is active (synchronized, visible, or focused)
+- `fps`: Current application frame rate (0 if session not active)
+
+#### Get Eye Textures
+```bash
+GET http://localhost:8765/v1/frames/0  # Left eye
+GET http://localhost:8765/v1/frames/1  # Right eye
+```
+
+**Response:** PNG image data (Content-Type: `image/png`)
+
+**Response codes:**
+- `200`: PNG image data returned
+- `404`: No frame available yet
+- `503`: Frame data unavailable
+
 #### Get Current Device Profile
 ```bash
 GET http://localhost:8765/v1/profile
@@ -196,6 +230,21 @@ Content-Type: application/json
 
 ### Using cURL
 
+**Get session status:**
+```bash
+curl http://localhost:8765/v1/status
+```
+
+**Download left eye texture:**
+```bash
+curl -o left_eye.png http://localhost:8765/v1/frames/0
+```
+
+**Download right eye texture:**
+```bash
+curl -o right_eye.png http://localhost:8765/v1/frames/1
+```
+
 **Get current device profile:**
 ```bash
 curl http://localhost:8765/v1/profile
@@ -253,6 +302,26 @@ import requests
 import json
 
 BASE_URL = "http://localhost:8765"
+
+# Get session status
+response = requests.get(f"{BASE_URL}/v1/status")
+if response.status_code == 200:
+    status = response.json()
+    print(f"Session state: {status['session_state']} ({status['fps']} FPS)")
+    print(f"Session active: {status['session_active']}")
+
+# Download eye textures
+response = requests.get(f"{BASE_URL}/v1/frames/0")  # Left eye
+if response.status_code == 200:
+    with open("left_eye.png", "wb") as f:
+        f.write(response.content)
+    print("Downloaded left eye texture")
+
+response = requests.get(f"{BASE_URL}/v1/frames/1")  # Right eye
+if response.status_code == 200:
+    with open("right_eye.png", "wb") as f:
+        f.write(response.content)
+    print("Downloaded right eye texture")
 
 # Get current device profile
 response = requests.get(f"{BASE_URL}/v1/profile")

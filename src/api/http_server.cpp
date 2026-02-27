@@ -3,12 +3,59 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
+#define STB_IMAGE_WRITE_STATIC
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "crow/app.h"
 #include "crow/json.h"
 #include "device_profiles.h"
+#include "frame_data.h"
+#include "stb_image_write.h"
 
 namespace ox_sim {
+
+// Map OxSessionState enum to a human-readable string
+static const char* SessionStateName(OxSessionState s) {
+    switch (s) {
+        case OX_SESSION_STATE_UNKNOWN:
+            return "unknown";
+        case OX_SESSION_STATE_IDLE:
+            return "idle";
+        case OX_SESSION_STATE_READY:
+            return "ready";
+        case OX_SESSION_STATE_SYNCHRONIZED:
+            return "synchronized";
+        case OX_SESSION_STATE_VISIBLE:
+            return "visible";
+        case OX_SESSION_STATE_FOCUSED:
+            return "focused";
+        case OX_SESSION_STATE_STOPPING:
+            return "stopping";
+        case OX_SESSION_STATE_EXITING:
+            return "exiting";
+        default:
+            return "unknown";
+    }
+}
+
+// Encode RGBA pixel data as PNG into a byte vector
+static std::vector<uint8_t> EncodeRGBAToPng(const void* rgba_data, uint32_t width, uint32_t height) {
+    std::vector<uint8_t> out;
+    out.reserve(width * height);  // rough reserve
+    stbi_write_png_to_func(
+        [](void* context, void* data, int size) {
+            auto* buf = static_cast<std::vector<uint8_t>*>(context);
+            const uint8_t* bytes = static_cast<const uint8_t*>(data);
+            buf->insert(buf->end(), bytes, bytes + size);
+        },
+        &out, static_cast<int>(width), static_cast<int>(height),
+        4,  // 4 channels: RGBA
+        rgba_data,
+        static_cast<int>(width * 4)  // stride in bytes
+    );
+    return out;
+}
 
 HttpServer::HttpServer()
     : simulator_(nullptr), device_profile_ptr_(nullptr), port_(8765), running_(false), should_stop_(false) {}
@@ -43,10 +90,13 @@ bool HttpServer::Start(SimulatorCore* simulator, const DeviceProfile** device_pr
         std::cout << "HTTP API server started successfully" << std::endl;
         std::cout << "Use API endpoints to control the simulator:" << std::endl;
         std::cout << "  GET/PUT  http://localhost:" << port << "/v1/profile" << std::endl;
+        std::cout << "  GET      http://localhost:" << port << "/v1/status" << std::endl;
         std::cout << "  GET/PUT  http://localhost:" << port << "/v1/devices/user/head" << std::endl;
         std::cout << "  GET/PUT  http://localhost:" << port << "/v1/devices/user/hand/right" << std::endl;
         std::cout << "  GET/PUT  http://localhost:" << port << "/v1/inputs/user/hand/right/input/trigger/value"
                   << std::endl;
+        std::cout << "  GET      http://localhost:" << port << "/v1/frames/0" << std::endl;
+        std::cout << "  GET      http://localhost:" << port << "/v1/frames/1" << std::endl;
     }
 
     return running_.load();
@@ -269,6 +319,50 @@ void HttpServer::ServerThread() {
             return crow::response(200, "OK");
         });
 
+    // Session status: state + FPS
+    CROW_ROUTE(app, "/v1/status").methods("GET"_method)([]() {
+        FrameData* fd = GetFrameData();
+        OxSessionState state = fd ? static_cast<OxSessionState>(fd->session_state.load(std::memory_order_relaxed))
+                                  : OX_SESSION_STATE_UNKNOWN;
+        uint32_t fps = (fd && fd->IsSessionActive()) ? fd->app_fps.load(std::memory_order_relaxed) : 0u;
+
+        crow::json::wvalue response;
+        response["session_state"] = SessionStateName(state);
+        response["session_state_id"] = static_cast<int>(state);
+        response["session_active"] = fd ? fd->IsSessionActive() : false;
+        response["fps"] = fps;
+        return crow::response(response);
+    });
+
+    // Eye texture endpoints — return PNG images
+    auto eye_frame_handler = [](int eye_index) -> crow::response {
+        FrameData* fd = GetFrameData();
+        if (!fd) {
+            return crow::response(503, "Frame data unavailable");
+        }
+
+        std::lock_guard<std::mutex> lock(fd->mutex);
+
+        if (!fd->pixel_data[eye_index] || fd->width == 0 || fd->height == 0) {
+            return crow::response(404, "No frame available");
+        }
+
+        std::vector<uint8_t> png = EncodeRGBAToPng(fd->pixel_data[eye_index], fd->width, fd->height);
+        if (png.empty()) {
+            return crow::response(500, "PNG encoding failed");
+        }
+
+        crow::response resp;
+        resp.code = 200;
+        resp.set_header("Content-Type", "image/png");
+        resp.body = std::string(reinterpret_cast<const char*>(png.data()), png.size());
+        return resp;
+    };
+
+    CROW_ROUTE(app, "/v1/frames/0").methods("GET"_method)([&eye_frame_handler]() { return eye_frame_handler(0); });
+
+    CROW_ROUTE(app, "/v1/frames/1").methods("GET"_method)([&eye_frame_handler]() { return eye_frame_handler(1); });
+
     // Get current device profile
     CROW_ROUTE(app, "/v1/profile").methods("GET"_method)([this]() {
         const DeviceProfile* profile = *device_profile_ptr_;
@@ -346,12 +440,12 @@ void HttpServer::ServerThread() {
     CROW_ROUTE(app, "/")
     ([]() {
         return "ox Simulator API Server\n\nAvailable endpoints:\n"
-               "  GET  /v1/profile              - Get current device profile (devices and inputs)\n"
-               "  PUT  /v1/profile              - Switch device profile\n"
-               "  GET  /v1/devices/<user_path>  - Get device pose\n"
-               "  PUT  /v1/devices/<user_path>  - Set device pose\n"
-               "  GET  /v1/inputs/<binding_path>  - Get input component state\n"
-               "  PUT  /v1/inputs/<binding_path>  - Set input component state\n";
+               "  GET      /v1/status                 - Session state and FPS\n"
+               "  GET/PUT  /v1/profile                - Get/switch device profile\n"
+               "  GET/PUT  /v1/devices/<user_path>    - Get/set device pose\n"
+               "  GET/PUT  /v1/inputs/<binding_path>  - Get/set input component state\n"
+               "  GET      /v1/frames/0                - Left eye texture (PNG)\n"
+               "  GET      /v1/frames/1                - Right eye texture (PNG)\n";
     });
 
     std::cout << "Starting HTTP server on port " << port_ << "..." << std::endl;
