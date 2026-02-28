@@ -109,8 +109,8 @@ bool HttpServer::Start(SimulatorCore* simulator, const DeviceProfile** device_pr
         std::cout << "  GET/PUT  http://localhost:" << port << "/v1/devices/user/hand/right" << std::endl;
         std::cout << "  GET/PUT  http://localhost:" << port << "/v1/inputs/user/hand/right/input/trigger/value"
                   << std::endl;
-        std::cout << "  GET      http://localhost:" << port << "/v1/frames/0" << std::endl;
-        std::cout << "  GET      http://localhost:" << port << "/v1/frames/1" << std::endl;
+        std::cout << "  GET      http://localhost:" << port << "/v1/views/0" << std::endl;
+        std::cout << "  GET      http://localhost:" << port << "/v1/views/1" << std::endl;
     }
 
     return running_.load();
@@ -407,11 +407,11 @@ void HttpServer::ServerThread() {
         return resp;
     };
 
-    CROW_ROUTE(app, "/v1/frames/0").methods("GET"_method)([&eye_frame_handler](const crow::request& req) {
+    CROW_ROUTE(app, "/v1/views/0").methods("GET"_method)([&eye_frame_handler](const crow::request& req) {
         return eye_frame_handler(req, 0);
     });
 
-    CROW_ROUTE(app, "/v1/frames/1").methods("GET"_method)([&eye_frame_handler](const crow::request& req) {
+    CROW_ROUTE(app, "/v1/views/1").methods("GET"_method)([&eye_frame_handler](const crow::request& req) {
         return eye_frame_handler(req, 1);
     });
 
@@ -496,8 +496,8 @@ void HttpServer::ServerThread() {
                "  GET/PUT  /v1/profile                - Get/switch device profile\n"
                "  GET/PUT  /v1/devices/<user_path>    - Get/set device pose\n"
                "  GET/PUT  /v1/inputs/<binding_path>  - Get/set input component state\n"
-               "  GET      /v1/frames/0                - Left eye texture (PNG)\n"
-               "  GET      /v1/frames/1                - Right eye texture (PNG)\n";
+               "  GET      /v1/views/0                - Left eye texture (PNG)\n"
+               "  GET      /v1/views/1                - Right eye texture (PNG)\n";
     });
 
     std::cout << "Starting HTTP server on port " << port_ << "..." << std::endl;

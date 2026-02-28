@@ -89,8 +89,8 @@ GET http://localhost:8765/v1/status
 
 #### Get Eye Textures
 ```bash
-GET http://localhost:8765/v1/frames/0  # Left eye
-GET http://localhost:8765/v1/frames/1  # Right eye
+GET http://localhost:8765/v1/views/0  # Left eye
+GET http://localhost:8765/v1/views/1  # Right eye
 ```
 
 **Query Parameters:**
@@ -98,8 +98,8 @@ GET http://localhost:8765/v1/frames/1  # Right eye
 
 **Examples:**
 ```bash
-GET http://localhost:8765/v1/frames/0?size=128  # Left eye, scaled to 128px width
-GET http://localhost:8765/v1/frames/1?size=512  # Right eye, scaled to 512px width
+GET http://localhost:8765/v1/views/0?size=128  # Left eye, scaled to 128px width
+GET http://localhost:8765/v1/views/1?size=512  # Right eye, scaled to 512px width
 ```
 
 **Response:** PNG image data (Content-Type: `image/png`)
@@ -246,12 +246,12 @@ curl http://localhost:8765/v1/status
 
 **Download left eye texture:**
 ```bash
-curl -o left_eye.png http://localhost:8765/v1/frames/0
+curl -o left_eye.png http://localhost:8765/v1/views/0
 ```
 
 **Download right eye texture (scaled to 256px width):**
 ```bash
-curl -o right_eye.png "http://localhost:8765/v1/frames/1?size=256"
+curl -o right_eye.png "http://localhost:8765/v1/views/1?size=256"
 ```
 
 **Get current device profile:**
@@ -320,13 +320,13 @@ if response.status_code == 200:
     print(f"Session active: {status['session_active']}")
 
 # Download eye textures
-response = requests.get(f"{BASE_URL}/v1/frames/0")  # Left eye (full resolution)
+response = requests.get(f"{BASE_URL}/v1/views/0")  # Left eye (full resolution)
 if response.status_code == 200:
     with open("left_eye.png", "wb") as f:
         f.write(response.content)
     print("Downloaded left eye texture")
 
-response = requests.get(f"{BASE_URL}/v1/frames/1?size=256")  # Right eye (scaled to 256px width)
+response = requests.get(f"{BASE_URL}/v1/views/1?size=256")  # Right eye (scaled to 256px width)
 if response.status_code == 200:
     with open("right_eye.png", "wb") as f:
         f.write(response.content)
